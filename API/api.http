@@ -69,11 +69,6 @@ GET http://localhost:3000/tab-groups/{{tabGroupId}}/tabs
 Accept: application/json
 user_id: {{userId}}
 
-### List Tabs
-GET http://localhost:3000/tabs
-Accept: application/json
-user_id: {{userId}}
-
 ### Create Tab
 POST http://localhost:3000/tabs
 Content-Type: application/json
@@ -101,11 +96,6 @@ user_id: {{userId}}
 
 ### Delete Tab
 DELETE http://localhost:3000/tabs/{{tabId}}
-Accept: application/json
-user_id: {{userId}}
-
-### List Environments
-GET http://localhost:3000/environments
 Accept: application/json
 user_id: {{userId}}
 

@@ -83,10 +83,6 @@ export async function getLatestTabForGroup(tabGroupId: string): Promise<TabDetai
   );
 }
 
-export async function listTabsForUser(userId: string): Promise<TabDetailViewRow[]> {
-  return queryAll<TabDetailViewRow>('SELECT * FROM tab_detail_view WHERE userId = ?', [userId]);
-}
-
 export async function listTabsForTabGroup(tabGroupId: string): Promise<TabDetailViewRow[]> {
   return queryAll<TabDetailViewRow>('SELECT * FROM tab_detail_view WHERE tabGroupId = ?', [tabGroupId]);
 }
@@ -103,10 +99,6 @@ export async function getLatestEnvironmentForTab(tabId: string): Promise<Environ
     'SELECT * FROM environment_detail_view WHERE tabId = ? ORDER BY environmentCreatedAt DESC LIMIT 1',
     [tabId],
   );
-}
-
-export async function listEnvironmentsForUser(userId: string): Promise<EnvironmentDetailViewRow[]> {
-  return queryAll<EnvironmentDetailViewRow>('SELECT * FROM environment_detail_view WHERE userId = ?', [userId]);
 }
 
 export async function getTabGroupSummaryForUser(userId: string): Promise<TabGroupSummaryRow[]> {

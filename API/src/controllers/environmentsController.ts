@@ -4,7 +4,6 @@ import {
   getTabById,
   getEnvironmentById,
   getLatestEnvironmentForTab,
-  listEnvironmentsForUser,
   listEnvironmentsForTab,
   type EnvironmentDetailViewRow,
 } from '../db/resourceAccess';
@@ -16,8 +15,6 @@ import { serializeEnvironment } from '../serializers';
 
 type SerializedEnvironment = ReturnType<typeof serializeEnvironment>;
 
-type ListResponse = Response<SerializedEnvironment[] | { error: string }>;
-
 type TabEnvironmentsResponse = Response<SerializedEnvironment[] | { error: string }>;
 type TabEnvironmentRequest = Request<{ tabId: string }>;
 
@@ -28,24 +25,6 @@ type EnvironmentParams = { environmentId: string };
 type UpdateRequest = Request<EnvironmentParams, unknown, Partial<UpdateEnvironmentRequest>>;
 
 type DeleteRequest = Request<EnvironmentParams>;
-
-async function listEnvironments(req: Request, res: ListResponse): Promise<void> {
-  const { userId } = req;
-
-  if (!userId) {
-    res.status(400).json({ error: 'Missing user context' });
-    return;
-  }
-
-  try {
-    const environments = await listEnvironmentsForUser(userId);
-    const formatted = environments.map(serializeEnvironment);
-    res.json(formatted);
-  } catch (error) {
-    console.error('Failed to list environments', error);
-    res.status(500).json({ error: 'Failed to list environments' });
-  }
-}
 
 async function listEnvironmentsForTabHandler(
   req: TabEnvironmentRequest,
@@ -222,7 +201,6 @@ async function deleteEnvironment(req: DeleteRequest, res: Response): Promise<voi
 }
 
 export {
-  listEnvironments,
   createEnvironment,
   updateEnvironment,
   deleteEnvironment,

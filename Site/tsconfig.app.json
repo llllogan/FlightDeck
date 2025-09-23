@@ -4,10 +4,8 @@
     "outDir": "./out-tsc/app",
     "types": []
   },
-  "files": [
-    "src/main.ts",
-    "src/app/app.component.ts"
-  ],
+  "files": ["src/main.ts"],
+  "include": ["src/**/*.ts"],
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
     "compilationMode": "partial",
@@ -16,4 +14,3 @@
     "strictTemplates": true
   }
 }
-

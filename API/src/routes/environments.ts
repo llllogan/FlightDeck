@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import {
-  listEnvironments,
   createEnvironment,
   updateEnvironment,
   deleteEnvironment,
@@ -11,7 +10,6 @@ import { requireUserId } from '../middleware/userContext';
 const router = Router();
 
 router.use(requireUserId);
-router.get('/', listEnvironments);
 router.get('/tabs/:tabId', listEnvironmentsForTabHandler);
 router.post('/', createEnvironment);
 router.patch('/:environmentId', updateEnvironment);

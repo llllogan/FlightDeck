@@ -5,15 +5,12 @@ import {
   getTabById,
   getLatestTabForGroup,
   getLatestEnvironmentForTab,
-  listTabsForUser,
 } from '../db/resourceAccess';
 import type { CreateTabRequest, RenameTabRequest } from '../models/requestBodies';
 import { serializeEnvironment, serializeTab } from '../serializers';
 
 type SerializedTab = ReturnType<typeof serializeTab>;
 type SerializedEnvironment = ReturnType<typeof serializeEnvironment>;
-
-type ListResponse = Response<SerializedTab[] | { error: string }>;
 
 type CreateRequest = Request<unknown, unknown, Partial<CreateTabRequest>>;
 
@@ -22,24 +19,6 @@ type TabParams = { tabId: string };
 type RenameRequest = Request<TabParams, unknown, Partial<RenameTabRequest>>;
 
 type DeleteRequest = Request<TabParams>;
-
-async function listTabs(req: Request, res: ListResponse): Promise<void> {
-  const { userId } = req;
-
-  if (!userId) {
-    res.status(400).json({ error: 'Missing user context' });
-    return;
-  }
-
-  try {
-    const tabs = await listTabsForUser(userId);
-    const formatted = tabs.map(serializeTab);
-    res.json(formatted);
-  } catch (error) {
-    console.error('Failed to list tabs', error);
-    res.status(500).json({ error: 'Failed to list tabs' });
-  }
-}
 
 async function createTab(req: CreateRequest, res: Response): Promise<void> {
   const { userId } = req;
@@ -196,4 +175,4 @@ async function deleteTab(req: DeleteRequest, res: Response): Promise<void> {
   }
 }
 
-export { listTabs, createTab, renameTab, deleteTab };
+export { createTab, renameTab, deleteTab };
