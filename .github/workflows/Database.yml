@@ -20,9 +20,6 @@ jobs:
       - name: Run Prisma migrations
         run: npx --yes prisma migrate deploy --schema DB/prisma/schema.prisma
 
-      - name: Install MySQL client
-        run: apt-get update && apt-get install -y mysql-client
-
       - name: Seed views
         env:
           MYSQL_PWD: ${{ secrets.DB_PASSWORD }}
