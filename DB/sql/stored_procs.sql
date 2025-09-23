@@ -5,8 +5,8 @@ CREATE PROCEDURE create_user (
     IN p_name VARCHAR(255)
 )
 BEGIN
-    INSERT INTO users (id, name)
-    VALUES (UUID(), p_name);
+    INSERT INTO users (id, name, createdAt, updatedAt)
+    VALUES (UUID(), p_name, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 END $$
 
 DROP PROCEDURE IF EXISTS create_tab_group $$
@@ -15,8 +15,8 @@ CREATE PROCEDURE create_tab_group (
     IN p_title   VARCHAR(255)
 )
 BEGIN
-    INSERT INTO tabgroups (id, userId, title)
-    VALUES (UUID(), p_user_id, p_title);
+    INSERT INTO tabgroups (id, userId, title, createdAt, updatedAt)
+    VALUES (UUID(), p_user_id, p_title, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 END $$
 
 DROP PROCEDURE IF EXISTS create_tab $$
@@ -25,8 +25,8 @@ CREATE PROCEDURE create_tab (
     IN p_title        VARCHAR(255)
 )
 BEGIN
-    INSERT INTO tabs (id, tabGroupId, title)
-    VALUES (UUID(), p_tab_group_id, p_title);
+    INSERT INTO tabs (id, tabGroupId, title, createdAt, updatedAt)
+    VALUES (UUID(), p_tab_group_id, p_title, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 END $$
 
 DROP PROCEDURE IF EXISTS create_environment $$
@@ -36,8 +36,8 @@ CREATE PROCEDURE create_environment (
     IN p_url    TEXT
 )
 BEGIN
-    INSERT INTO environments (id, tabId, name, url)
-    VALUES (UUID(), p_tab_id, p_name, p_url);
+    INSERT INTO environments (id, tabId, name, url, createdAt, updatedAt)
+    VALUES (UUID(), p_tab_id, p_name, p_url, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 END $$
 
 DROP PROCEDURE IF EXISTS rename_tab_group $$

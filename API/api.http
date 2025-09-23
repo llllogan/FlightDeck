@@ -1,0 +1,130 @@
+### Health Check
+GET http://localhost:3000/health
+Accept: application/json
+
+### List Constants
+GET http://localhost:3000/consts/environments
+Accept: application/json
+
+### Create User
+POST http://localhost:3000/users
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "Logan"
+}
+
+### Delete User
+DELETE http://localhost:3000/users
+Accept: application/json
+user_id: {{userId}}
+
+### Get User Tab Groups
+GET http://localhost:3000/users/tab-groups
+Accept: application/json
+user_id: {{userId}}
+
+### Get User Summary
+GET http://localhost:3000/users/summary
+Accept: application/json
+user_id: {{userId}}
+
+### List Tab Groups
+GET http://localhost:3000/tab-groups
+Accept: application/json
+user_id: {{userId}}
+
+### Create Tab Group
+POST http://localhost:3000/tab-groups
+Content-Type: application/json
+Accept: application/json
+user_id: {{userId}}
+
+{
+  "title": "My Tab Group"
+}
+
+### Rename Tab Group
+PATCH http://localhost:3000/tab-groups/{{tabGroupId}}
+Content-Type: application/json
+Accept: application/json
+user_id: {{userId}}
+
+{
+  "title": "Updated Tab Group"
+}
+
+### Delete Tab Group
+DELETE http://localhost:3000/tab-groups/{{tabGroupId}}
+Accept: application/json
+user_id: {{userId}}
+
+### Get Tab Group Summary
+GET http://localhost:3000/tab-groups/summary
+Accept: application/json
+user_id: {{userId}}
+
+### List Tabs
+GET http://localhost:3000/tabs
+Accept: application/json
+user_id: {{userId}}
+
+### Create Tab
+POST http://localhost:3000/tabs
+Content-Type: application/json
+Accept: application/json
+user_id: {{userId}}
+
+{
+  "tabGroupId": "{{tabGroupId}}",
+  "title": "My Tab"
+}
+
+### Rename Tab
+PATCH http://localhost:3000/tabs/{{tabId}}
+Content-Type: application/json
+Accept: application/json
+user_id: {{userId}}
+
+{
+  "title": "Updated Tab"
+}
+
+### Delete Tab
+DELETE http://localhost:3000/tabs/{{tabId}}
+Accept: application/json
+user_id: {{userId}}
+
+### List Environments
+GET http://localhost:3000/environments
+Accept: application/json
+user_id: {{userId}}
+
+### Create Environment
+POST http://localhost:3000/environments
+Content-Type: application/json
+Accept: application/json
+user_id: {{userId}}
+
+{
+  "tabId": "{{tabId}}",
+  "name": "Production",
+  "url": "https://example.com"
+}
+
+### Update Environment
+PATCH http://localhost:3000/environments/{{environmentId}}
+Content-Type: application/json
+Accept: application/json
+user_id: {{userId}}
+
+{
+  "name": "Staging",
+  "url": "https://staging.example.com"
+}
+
+### Delete Environment
+DELETE http://localhost:3000/environments/{{environmentId}}
+Accept: application/json
+user_id: {{userId}}
