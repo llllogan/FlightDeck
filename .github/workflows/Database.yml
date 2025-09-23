@@ -5,7 +5,7 @@ on:
 
 jobs:
   migrate-and-seed:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     env:
       DATABASE_URL: mysql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@${{ secrets.DB_HOST }}:${{ secrets.DB_PORT }}/${{ secrets.DB_NAME }}
     steps:
