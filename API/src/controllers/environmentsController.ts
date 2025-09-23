@@ -11,8 +11,11 @@ import type {
   CreateEnvironmentRequest,
   UpdateEnvironmentRequest,
 } from '../models/requestBodies';
+import { serializeEnvironment } from '../serializers';
 
-type ListResponse = Response<EnvironmentDetailViewRow[] | { error: string }>;
+type SerializedEnvironment = ReturnType<typeof serializeEnvironment>;
+
+type ListResponse = Response<SerializedEnvironment[] | { error: string }>;
 
 type CreateRequest = Request<unknown, unknown, Partial<CreateEnvironmentRequest>>;
 
@@ -32,7 +35,8 @@ async function listEnvironments(req: Request, res: ListResponse): Promise<void> 
 
   try {
     const environments = await listEnvironmentsForUser(userId);
-    res.json(environments);
+    const formatted = environments.map(serializeEnvironment);
+    res.json(formatted);
   } catch (error) {
     console.error('Failed to list environments', error);
     res.status(500).json({ error: 'Failed to list environments' });
@@ -87,7 +91,7 @@ async function createEnvironment(req: CreateRequest, res: Response): Promise<voi
       return;
     }
 
-    res.status(201).json(created);
+    res.status(201).json(serializeEnvironment(created));
   } catch (error) {
     console.error('Failed to create environment', error);
     res.status(500).json({ error: 'Failed to create environment' });
@@ -137,7 +141,7 @@ async function updateEnvironment(req: UpdateRequest, res: Response): Promise<voi
 
     await callStoredProcedure('update_environment', [environmentId, sanitizedName, sanitizedUrl]);
     const updated = await getEnvironmentById(environmentId);
-    res.json(updated);
+    res.json(serializeEnvironment(updated));
   } catch (error) {
     console.error('Failed to update environment', error);
     res.status(500).json({ error: 'Failed to update environment' });

@@ -13,6 +13,10 @@ export interface RenameTabGroupRequest {
 export interface CreateTabRequest {
   tabGroupId: string;
   title: string;
+  environment: {
+    name: string;
+    url: string;
+  };
 }
 
 export interface RenameTabRequest {

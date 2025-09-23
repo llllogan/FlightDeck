@@ -6,14 +6,22 @@ import {
   getLatestTabGroupForUser,
   listTabGroupsForUser,
   getTabGroupSummaryForUser,
+  listTabsForTabGroup,
   type UserTabGroupViewRow,
   type TabGroupSummaryRow,
 } from '../db/resourceAccess';
 import type { CreateTabGroupRequest, RenameTabGroupRequest } from '../models/requestBodies';
+import { isCompleteTabGroupRow, serializeTab, serializeTabGroup, serializeTabGroupSummary } from '../serializers';
 
-type ListResponse = Response<UserTabGroupViewRow[] | { error: string }>;
+type SerializedTabGroup = ReturnType<typeof serializeTabGroup>;
+type SerializedTabGroupSummary = ReturnType<typeof serializeTabGroupSummary>;
+type SerializedTab = ReturnType<typeof serializeTab>;
 
-type SummaryResponse = Response<TabGroupSummaryRow[] | { error: string }>;
+type ListResponse = Response<SerializedTabGroup[] | { error: string }>;
+
+type SummaryResponse = Response<SerializedTabGroupSummary[] | { error: string }>;
+
+type TabsByGroupResponse = Response<SerializedTab[] | { error: string }>;
 
 type CreateRequest = Request<unknown, unknown, Partial<CreateTabGroupRequest>>;
 
@@ -22,6 +30,10 @@ type RenameParams = { tabGroupId: string };
 type RenameRequest = Request<RenameParams, unknown, Partial<RenameTabGroupRequest>>;
 
 type DeleteRequest = Request<RenameParams>;
+
+type TabsRequestParams = { tabGroupId: string };
+
+type TabsRequest = Request<TabsRequestParams>;
 
 async function listTabGroups(req: Request, res: ListResponse): Promise<void> {
   const { userId } = req;
@@ -33,7 +45,9 @@ async function listTabGroups(req: Request, res: ListResponse): Promise<void> {
 
   try {
     const groups = await listTabGroupsForUser(userId);
-    res.json(groups);
+    const tabGroups = groups.filter(isCompleteTabGroupRow).map(serializeTabGroup);
+
+    res.json(tabGroups);
   } catch (error) {
     console.error('Failed to list tab groups', error);
     res.status(500).json({ error: 'Failed to list tab groups' });
@@ -70,7 +84,12 @@ async function createTabGroup(req: CreateRequest, res: Response): Promise<void> 
       return;
     }
 
-    res.status(201).json(createdGroup);
+    if (!isCompleteTabGroupRow(createdGroup)) {
+      res.status(201).json({ message: 'Tab group created but could not retrieve record' });
+      return;
+    }
+
+    res.status(201).json(serializeTabGroup(createdGroup));
   } catch (error) {
     console.error('Failed to create tab group', error);
     res.status(500).json({ error: 'Failed to create tab group' });
@@ -112,7 +131,13 @@ async function renameTabGroup(req: RenameRequest, res: Response): Promise<void> 
 
     await callStoredProcedure('rename_tab_group', [tabGroupId, title.trim()]);
     const updated = await getTabGroupById(tabGroupId);
-    res.json(updated);
+
+    if (!updated || !isCompleteTabGroupRow(updated)) {
+      res.status(200).json({ message: 'Tab group renamed but could not retrieve record' });
+      return;
+    }
+
+    res.json(serializeTabGroup(updated));
   } catch (error) {
     console.error('Failed to rename tab group', error);
     res.status(500).json({ error: 'Failed to rename tab group' });
@@ -164,10 +189,42 @@ async function getTabGroupSummary(req: Request, res: SummaryResponse): Promise<v
 
   try {
     const summary = await getTabGroupSummaryForUser(userId);
-    res.json(summary);
+    const formatted = summary.map(serializeTabGroupSummary);
+    res.json(formatted);
   } catch (error) {
     console.error('Failed to fetch tab group summary', error);
     res.status(500).json({ error: 'Failed to fetch tab group summary' });
+  }
+}
+
+async function listTabsForGroup(req: TabsRequest, res: TabsByGroupResponse): Promise<void> {
+  const { userId } = req;
+  const { tabGroupId } = req.params;
+
+  if (!userId) {
+    res.status(400).json({ error: 'Missing user context' });
+    return;
+  }
+
+  if (!tabGroupId) {
+    res.status(400).json({ error: 'tabGroupId path parameter is required' });
+    return;
+  }
+
+  try {
+    const tabGroup = await getTabGroupById(tabGroupId);
+
+    if (!tabGroup || tabGroup.userId !== userId) {
+      res.status(404).json({ error: 'Tab group not found' });
+      return;
+    }
+
+    const tabs = await listTabsForTabGroup(tabGroupId);
+    const formatted = tabs.map(serializeTab);
+    res.json(formatted);
+  } catch (error) {
+    console.error('Failed to list tabs for tab group', error);
+    res.status(500).json({ error: 'Failed to list tabs for tab group' });
   }
 }
 
@@ -177,4 +234,5 @@ export {
   renameTabGroup,
   deleteTabGroup,
   getTabGroupSummary,
+  listTabsForGroup,
 };

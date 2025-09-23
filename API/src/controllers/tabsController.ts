@@ -4,12 +4,16 @@ import {
   getTabGroupById,
   getTabById,
   getLatestTabForGroup,
+  getLatestEnvironmentForTab,
   listTabsForUser,
-  type TabDetailViewRow,
 } from '../db/resourceAccess';
 import type { CreateTabRequest, RenameTabRequest } from '../models/requestBodies';
+import { serializeEnvironment, serializeTab } from '../serializers';
 
-type ListResponse = Response<TabDetailViewRow[] | { error: string }>;
+type SerializedTab = ReturnType<typeof serializeTab>;
+type SerializedEnvironment = ReturnType<typeof serializeEnvironment>;
+
+type ListResponse = Response<SerializedTab[] | { error: string }>;
 
 type CreateRequest = Request<unknown, unknown, Partial<CreateTabRequest>>;
 
@@ -29,7 +33,8 @@ async function listTabs(req: Request, res: ListResponse): Promise<void> {
 
   try {
     const tabs = await listTabsForUser(userId);
-    res.json(tabs);
+    const formatted = tabs.map(serializeTab);
+    res.json(formatted);
   } catch (error) {
     console.error('Failed to list tabs', error);
     res.status(500).json({ error: 'Failed to list tabs' });
@@ -38,7 +43,7 @@ async function listTabs(req: Request, res: ListResponse): Promise<void> {
 
 async function createTab(req: CreateRequest, res: Response): Promise<void> {
   const { userId } = req;
-  const { tabGroupId, title } = req.body;
+  const { tabGroupId, title, environment } = req.body;
 
   if (!userId) {
     res.status(400).json({ error: 'Missing user context' });
@@ -55,6 +60,23 @@ async function createTab(req: CreateRequest, res: Response): Promise<void> {
     return;
   }
 
+  if (!environment || typeof environment !== 'object') {
+    res.status(400).json({ error: 'environment payload is required' });
+    return;
+  }
+
+  const { name, url } = environment;
+
+  if (!name || typeof name !== 'string' || !name.trim()) {
+    res.status(400).json({ error: 'Environment name is required' });
+    return;
+  }
+
+  if (!url || typeof url !== 'string' || !url.trim()) {
+    res.status(400).json({ error: 'Environment url is required' });
+    return;
+  }
+
   try {
     const tabGroup = await getTabGroupById(tabGroupId);
 
@@ -68,15 +90,29 @@ async function createTab(req: CreateRequest, res: Response): Promise<void> {
       return;
     }
 
-    await callStoredProcedure('create_tab', [tabGroupId, title.trim()]);
-    const created = await getLatestTabForGroup(tabGroupId);
+    const sanitizedTitle = title.trim();
+    const sanitizedName = name.trim();
+    const sanitizedUrl = url.trim();
 
-    if (!created) {
+    await callStoredProcedure('create_tab', [tabGroupId, sanitizedTitle]);
+    const createdTab = await getLatestTabForGroup(tabGroupId);
+
+    if (!createdTab) {
       res.status(201).json({ message: 'Tab created but could not retrieve record' });
       return;
     }
 
-    res.status(201).json(created);
+    await callStoredProcedure('create_environment', [createdTab.tabId, sanitizedName, sanitizedUrl]);
+    const createdEnvironment = await getLatestEnvironmentForTab(createdTab.tabId);
+
+    const serializedTab = serializeTab(createdTab);
+    const response: SerializedTab & { environment?: SerializedEnvironment } = serializedTab;
+
+    if (createdEnvironment) {
+      response.environment = serializeEnvironment(createdEnvironment);
+    }
+
+    res.status(201).json(response);
   } catch (error) {
     console.error('Failed to create tab', error);
     res.status(500).json({ error: 'Failed to create tab' });
@@ -118,7 +154,7 @@ async function renameTab(req: RenameRequest, res: Response): Promise<void> {
 
     await callStoredProcedure('rename_tab', [tabId, title.trim()]);
     const updated = await getTabById(tabId);
-    res.json(updated);
+    res.json(serializeTab(updated));
   } catch (error) {
     console.error('Failed to rename tab', error);
     res.status(500).json({ error: 'Failed to rename tab' });

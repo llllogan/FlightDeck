@@ -1,4 +1,6 @@
-@userId = 47666bda-985c-11f0-ba26-0242ac120003
+@userId = a6fddb43-9861-11f0-ba26-0242ac120003
+@tabGroupId = c6f14643-9861-11f0-ba26-0242ac120003
+@tabId = a15dd9a6-9866-11f0-ba26-0242ac120003
 
 ### Health Check
 GET http://localhost:3000/health
@@ -32,11 +34,6 @@ GET http://localhost:3000/users/summary
 Accept: application/json
 user_id: {{userId}}
 
-### List Tab Groups
-GET http://localhost:3000/tab-groups
-Accept: application/json
-user_id: {{userId}}
-
 ### Create Tab Group
 POST http://localhost:3000/tab-groups
 Content-Type: application/json
@@ -44,7 +41,7 @@ Accept: application/json
 user_id: {{userId}}
 
 {
-  "title": "My Tab Group"
+  "title": "Connectwise"
 }
 
 ### Rename Tab Group
@@ -67,6 +64,11 @@ GET http://localhost:3000/tab-groups/summary
 Accept: application/json
 user_id: {{userId}}
 
+### Get Tabs For Tab Group
+GET http://localhost:3000/tab-groups/{{tabGroupId}}/tabs
+Accept: application/json
+user_id: {{userId}}
+
 ### List Tabs
 GET http://localhost:3000/tabs
 Accept: application/json
@@ -80,7 +82,11 @@ user_id: {{userId}}
 
 {
   "tabGroupId": "{{tabGroupId}}",
-  "title": "My Tab"
+  "title": "Connectwise",
+  "environment": {
+    "name": "prd",
+    "url": "https://connectwise.example.com"
+  }
 }
 
 ### Rename Tab

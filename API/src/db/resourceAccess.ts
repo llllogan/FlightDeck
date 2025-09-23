@@ -87,6 +87,10 @@ export async function listTabsForUser(userId: string): Promise<TabDetailViewRow[
   return queryAll<TabDetailViewRow>('SELECT * FROM tab_detail_view WHERE userId = ?', [userId]);
 }
 
+export async function listTabsForTabGroup(tabGroupId: string): Promise<TabDetailViewRow[]> {
+  return queryAll<TabDetailViewRow>('SELECT * FROM tab_detail_view WHERE tabGroupId = ?', [tabGroupId]);
+}
+
 export async function getEnvironmentById(environmentId: string): Promise<EnvironmentDetailViewRow | undefined> {
   return querySingle<EnvironmentDetailViewRow>(
     'SELECT * FROM environment_detail_view WHERE environmentId = ?',
