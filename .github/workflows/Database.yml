@@ -8,6 +8,9 @@ jobs:
     runs-on: self-hosted
     env:
       DATABASE_URL: mysql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@${{ secrets.DB_HOST }}:${{ secrets.DB_PORT }}/${{ secrets.DB_NAME }}
+    defaults:
+      run:
+        working-directory: DB
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
