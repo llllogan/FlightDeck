@@ -32,11 +32,12 @@ END $$
 DROP PROCEDURE IF EXISTS create_environment $$
 CREATE PROCEDURE create_environment (
     IN p_tab_id CHAR(36),
+    IN p_name   VARCHAR(255),
     IN p_url    TEXT
 )
 BEGIN
-    INSERT INTO environments (id, tabId, url)
-    VALUES (UUID(), p_tab_id, p_url);
+    INSERT INTO environments (id, tabId, name, url)
+    VALUES (UUID(), p_tab_id, p_name, p_url);
 END $$
 
 DROP PROCEDURE IF EXISTS rename_tab_group $$
@@ -63,14 +64,16 @@ BEGIN
     WHERE id = p_tab_id;
 END $$
 
-DROP PROCEDURE IF EXISTS update_environment_url $$
-CREATE PROCEDURE update_environment_url (
+DROP PROCEDURE IF EXISTS update_environment $$
+CREATE PROCEDURE update_environment (
     IN p_environment_id CHAR(36),
+    IN p_name           VARCHAR(255),
     IN p_url            TEXT
 )
 BEGIN
     UPDATE environments
-    SET url = p_url,
+    SET name = p_name,
+        url = p_url,
         updatedAt = CURRENT_TIMESTAMP
     WHERE id = p_environment_id;
 END $$

@@ -29,6 +29,7 @@ DROP VIEW IF EXISTS environment_detail_view;
 CREATE OR REPLACE VIEW environment_detail_view AS
 SELECT
     e.id        AS environmentId,
+    e.name      AS environmentName,
     e.url       AS environmentUrl,
     e.createdAt AS environmentCreatedAt,
     e.updatedAt AS environmentUpdatedAt,
