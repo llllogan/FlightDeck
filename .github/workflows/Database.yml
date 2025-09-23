@@ -18,7 +18,7 @@ jobs:
           node-version: 20
 
       - name: Run Prisma migrations
-        run: npx prisma generate
+        run: npx prisma generate --schema=prisma/schema.prisma
 
       - name: Generate diff-based migration
         run: |
