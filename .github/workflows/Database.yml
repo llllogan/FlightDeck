@@ -1,0 +1,47 @@
+name: Deploy Database Schema
+
+on:
+  workflow_dispatch:
+
+jobs:
+  migrate-and-seed:
+    runs-on: self-hosted
+    env:
+      DATABASE_URL: mysql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@${{ secrets.DB_HOST }}:${{ secrets.DB_PORT }}/${{ secrets.DB_NAME }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Prisma CLI
+        run: npm install prisma@latest --no-save
+
+      - name: Run Prisma migrations
+        run: npx prisma migrate deploy --schema DB/prisma/schema.prisma
+
+      - name: Install MySQL client
+        run: sudo apt-get update && sudo apt-get install -y mysql-client
+
+      - name: Seed views
+        env:
+          MYSQL_PWD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          mysql \
+            --host="${{ secrets.DB_HOST }}" \
+            --port="${{ secrets.DB_PORT }}" \
+            --user="${{ secrets.DB_USER }}" \
+            "${{ secrets.DB_NAME }}" < DB/sql/seed_views.sql
+
+      - name: Seed stored procedures
+        env:
+          MYSQL_PWD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          mysql \
+            --host="${{ secrets.DB_HOST }}" \
+            --port="${{ secrets.DB_PORT }}" \
+            --user="${{ secrets.DB_USER }}" \
+            "${{ secrets.DB_NAME }}" < DB/sql/stored_procs.sql
