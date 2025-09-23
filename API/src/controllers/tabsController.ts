@@ -76,7 +76,7 @@ async function createTab(req: CreateRequest, res: Response): Promise<void> {
       return;
     }
 
-    res.status(201).json({ tab: created });
+    res.status(201).json(created);
   } catch (error) {
     console.error('Failed to create tab', error);
     res.status(500).json({ error: 'Failed to create tab' });
@@ -118,7 +118,7 @@ async function renameTab(req: RenameRequest, res: Response): Promise<void> {
 
     await callStoredProcedure('rename_tab', [tabId, title.trim()]);
     const updated = await getTabById(tabId);
-    res.json({ tab: updated });
+    res.json(updated);
   } catch (error) {
     console.error('Failed to rename tab', error);
     res.status(500).json({ error: 'Failed to rename tab' });

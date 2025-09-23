@@ -44,7 +44,7 @@ async function createUser(req: CreateUserRequestHandler, res: StandardResponse):
       return;
     }
 
-    res.status(201).json({ user: createdUser });
+    res.status(201).json(createdUser);
   } catch (error) {
     console.error('Failed to create user', error);
     res.status(500).json({ error: 'Failed to create user' });

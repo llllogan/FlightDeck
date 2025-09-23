@@ -1,3 +1,5 @@
+@userId = 47666bda-985c-11f0-ba26-0242ac120003
+
 ### Health Check
 GET http://localhost:3000/health
 Accept: application/json

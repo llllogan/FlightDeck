@@ -87,7 +87,7 @@ async function createEnvironment(req: CreateRequest, res: Response): Promise<voi
       return;
     }
 
-    res.status(201).json({ environment: created });
+    res.status(201).json(created);
   } catch (error) {
     console.error('Failed to create environment', error);
     res.status(500).json({ error: 'Failed to create environment' });
@@ -137,7 +137,7 @@ async function updateEnvironment(req: UpdateRequest, res: Response): Promise<voi
 
     await callStoredProcedure('update_environment', [environmentId, sanitizedName, sanitizedUrl]);
     const updated = await getEnvironmentById(environmentId);
-    res.json({ environment: updated });
+    res.json(updated);
   } catch (error) {
     console.error('Failed to update environment', error);
     res.status(500).json({ error: 'Failed to update environment' });

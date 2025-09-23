@@ -70,7 +70,7 @@ async function createTabGroup(req: CreateRequest, res: Response): Promise<void> 
       return;
     }
 
-    res.status(201).json({ tabGroup: createdGroup });
+    res.status(201).json(createdGroup);
   } catch (error) {
     console.error('Failed to create tab group', error);
     res.status(500).json({ error: 'Failed to create tab group' });
@@ -112,7 +112,7 @@ async function renameTabGroup(req: RenameRequest, res: Response): Promise<void> 
 
     await callStoredProcedure('rename_tab_group', [tabGroupId, title.trim()]);
     const updated = await getTabGroupById(tabGroupId);
-    res.json({ tabGroup: updated });
+    res.json(updated);
   } catch (error) {
     console.error('Failed to rename tab group', error);
     res.status(500).json({ error: 'Failed to rename tab group' });

@@ -2,7 +2,7 @@ DELIMITER $$
 
 DROP PROCEDURE IF EXISTS create_user $$
 CREATE PROCEDURE create_user (
-    IN p_name VARCHAR(255)
+    IN p_name VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
 )
 BEGIN
     INSERT INTO users (id, name, createdAt, updatedAt)
@@ -11,8 +11,8 @@ END $$
 
 DROP PROCEDURE IF EXISTS create_tab_group $$
 CREATE PROCEDURE create_tab_group (
-    IN p_user_id CHAR(36),
-    IN p_title   VARCHAR(255)
+    IN p_user_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    IN p_title   VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
 )
 BEGIN
     INSERT INTO tabgroups (id, userId, title, createdAt, updatedAt)
@@ -21,8 +21,8 @@ END $$
 
 DROP PROCEDURE IF EXISTS create_tab $$
 CREATE PROCEDURE create_tab (
-    IN p_tab_group_id CHAR(36),
-    IN p_title        VARCHAR(255)
+    IN p_tab_group_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    IN p_title        VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
 )
 BEGIN
     INSERT INTO tabs (id, tabGroupId, title, createdAt, updatedAt)
@@ -31,9 +31,9 @@ END $$
 
 DROP PROCEDURE IF EXISTS create_environment $$
 CREATE PROCEDURE create_environment (
-    IN p_tab_id CHAR(36),
-    IN p_name   VARCHAR(255),
-    IN p_url    TEXT
+    IN p_tab_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    IN p_name   VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    IN p_url    TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
 )
 BEGIN
     INSERT INTO environments (id, tabId, name, url, createdAt, updatedAt)
@@ -42,8 +42,8 @@ END $$
 
 DROP PROCEDURE IF EXISTS rename_tab_group $$
 CREATE PROCEDURE rename_tab_group (
-    IN p_tab_group_id CHAR(36),
-    IN p_title        VARCHAR(255)
+    IN p_tab_group_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    IN p_title        VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
 )
 BEGIN
     UPDATE tabgroups
@@ -54,8 +54,8 @@ END $$
 
 DROP PROCEDURE IF EXISTS rename_tab $$
 CREATE PROCEDURE rename_tab (
-    IN p_tab_id CHAR(36),
-    IN p_title  VARCHAR(255)
+    IN p_tab_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    IN p_title  VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
 )
 BEGIN
     UPDATE tabs
@@ -66,9 +66,9 @@ END $$
 
 DROP PROCEDURE IF EXISTS update_environment $$
 CREATE PROCEDURE update_environment (
-    IN p_environment_id CHAR(36),
-    IN p_name           VARCHAR(255),
-    IN p_url            TEXT
+    IN p_environment_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    IN p_name           VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    IN p_url            TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
 )
 BEGIN
     UPDATE environments
@@ -80,7 +80,7 @@ END $$
 
 DROP PROCEDURE IF EXISTS delete_tab_group $$
 CREATE PROCEDURE delete_tab_group (
-    IN p_tab_group_id CHAR(36)
+    IN p_tab_group_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
 )
 BEGIN
     DELETE FROM tabgroups
@@ -89,7 +89,7 @@ END $$
 
 DROP PROCEDURE IF EXISTS delete_tab $$
 CREATE PROCEDURE delete_tab (
-    IN p_tab_id CHAR(36)
+    IN p_tab_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
 )
 BEGIN
     DELETE FROM tabs
@@ -98,7 +98,7 @@ END $$
 
 DROP PROCEDURE IF EXISTS delete_environment $$
 CREATE PROCEDURE delete_environment (
-    IN p_environment_id CHAR(36)
+    IN p_environment_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
 )
 BEGIN
     DELETE FROM environments
@@ -107,7 +107,7 @@ END $$
 
 DROP PROCEDURE IF EXISTS delete_user $$
 CREATE PROCEDURE delete_user (
-    IN p_user_id CHAR(36)
+    IN p_user_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
 )
 BEGIN
     DELETE FROM users
