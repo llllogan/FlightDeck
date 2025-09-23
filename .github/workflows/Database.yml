@@ -8,6 +8,9 @@ jobs:
     runs-on: self-hosted
     env:
       DATABASE_URL: mysql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@${{ secrets.DB_HOST }}:${{ secrets.DB_PORT }}/${{ secrets.DB_NAME }}
+    defaults:
+      run:
+        working-directory: DB
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -16,12 +19,32 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
+          cache-dependency-path: DB/package-lock.json
 
       - name: Install Prisma CLI
         run: npm install prisma@latest --no-save
 
-      - name: Run Prisma migrations
-        run: npx prisma migrate deploy --schema DB/prisma/schema.prisma
+      - name: Generate Prisma client
+        run: npm run generate
+        
+      - name: Generate diff-based migration
+        run: |
+          ts=$(date +%s)_ci
+          dir="prisma/migrations/$ts"
+          mkdir -p "$dir"
+          echo "Writing diff migration to $dir/migration.sql"
+          # --- generate SQL (empty exit 0) --------------------------
+          npx prisma migrate diff \
+            --from-url="$DATABASE_URL" \
+            --to-schema-datamodel=prisma/schema.prisma \
+            --script > "$dir/migration.sql"
+          # --- drop the folder if SQL is empty ----------------------
+          if [ ! -s "$dir/migration.sql" ]; then
+            echo "No schema difference - removing empty migration."
+            rm -rf "$dir"
+          fi
+
 
       - name: Install MySQL client
         run: sudo apt-get update && sudo apt-get install -y mysql-client
