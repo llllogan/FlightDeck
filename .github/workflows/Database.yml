@@ -51,7 +51,7 @@ jobs:
             --host="${{ secrets.DB_HOST }}" \
             --port="${{ secrets.DB_PORT }}" \
             --user="${{ secrets.DB_USER }}" \
-            "${{ secrets.DB_NAME }}" < DB/sql/seed_views.sql
+            "${{ secrets.DB_NAME }}" < sql/seed_views.sql
 
       - name: Seed stored procedures
         env:
@@ -61,4 +61,4 @@ jobs:
             --host="${{ secrets.DB_HOST }}" \
             --port="${{ secrets.DB_PORT }}" \
             --user="${{ secrets.DB_USER }}" \
-            "${{ secrets.DB_NAME }}" < DB/sql/stored_procs.sql
+            "${{ secrets.DB_NAME }}" < sql/stored_procs.sql
