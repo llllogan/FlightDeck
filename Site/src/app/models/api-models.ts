@@ -42,6 +42,19 @@ export interface Environment {
   updatedAt: string;
 }
 
+export interface TabWithEnvironments extends Tab {
+  environments: Environment[];
+}
+
+export interface WorkspaceTabGroup extends TabGroup {
+  tabs: TabWithEnvironments[];
+}
+
+export interface WorkspaceResponse {
+  summary: UserSummary | null;
+  tabGroups: WorkspaceTabGroup[];
+}
+
 export interface CreateUserPayload {
   name: string;
 }

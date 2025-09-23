@@ -2,11 +2,17 @@ import { Request, Response } from 'express';
 import { callStoredProcedure, querySingle } from '../db/helpers';
 import type { CreateUserRequest } from '../models/requestBodies';
 import type { UserRecord } from '../db/resourceAccess';
-import { listTabGroupsForUser } from '../db/resourceAccess';
+import {
+  listTabGroupsForUser,
+  listTabsForTabGroup,
+  listEnvironmentsForTab,
+} from '../db/resourceAccess';
 import {
   isCompleteTabGroupRow,
   serializeTabGroup,
   serializeUserSummary,
+  serializeTab,
+  serializeEnvironment,
   type UserSummaryRow as UserSummaryRowData,
 } from '../serializers';
 
@@ -16,6 +22,16 @@ type EmptyRequest = Request;
 
 type SerializedUserSummary = ReturnType<typeof serializeUserSummary>;
 type SerializedTabGroup = ReturnType<typeof serializeTabGroup>;
+type SerializedTab = ReturnType<typeof serializeTab>;
+type SerializedEnvironment = ReturnType<typeof serializeEnvironment>;
+
+type WorkspaceTab = SerializedTab & { environments: SerializedEnvironment[] };
+type WorkspaceTabGroup = SerializedTabGroup & { tabs: WorkspaceTab[] };
+type WorkspacePayload = {
+  summary: SerializedUserSummary | null;
+  tabGroups: WorkspaceTabGroup[];
+};
+type WorkspaceResponse = Response<WorkspacePayload | { error: string }>;
 
 type SummaryResponse = Response<SerializedUserSummary | { error: string }>;
 
@@ -123,4 +139,59 @@ async function getUserTabGroups(req: EmptyRequest, res: TabGroupsResponse): Prom
   }
 }
 
-export { createUser, deleteUser, getUserSummary, getUserTabGroups };
+async function getUserWorkspace(req: EmptyRequest, res: WorkspaceResponse): Promise<void> {
+  const { userId } = req;
+
+  if (!userId) {
+    res.status(400).json({ error: 'Missing user context' });
+    return;
+  }
+
+  try {
+    const [summaryRow, tabGroupRows] = await Promise.all([
+      querySingle<UserSummaryRowData>(
+        'SELECT * FROM user_hierarchy_summary_view WHERE userId = ?',
+        [userId],
+      ),
+      listTabGroupsForUser(userId),
+    ]);
+
+    if (!summaryRow) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    const tabGroups = await Promise.all(
+      tabGroupRows
+        .filter(isCompleteTabGroupRow)
+        .map(async (row) => {
+          const tabs = await listTabsForTabGroup(row.tabGroupId);
+
+          const tabsWithEnvironments = await Promise.all(
+            tabs.map(async (tab) => {
+              const environments = await listEnvironmentsForTab(tab.tabId);
+              return {
+                ...serializeTab(tab),
+                environments: environments.map(serializeEnvironment),
+              };
+            }),
+          );
+
+          return {
+            ...serializeTabGroup(row),
+            tabs: tabsWithEnvironments,
+          };
+        }),
+    );
+
+    res.json({
+      summary: serializeUserSummary(summaryRow),
+      tabGroups,
+    });
+  } catch (error) {
+    console.error('Failed to load workspace', error);
+    res.status(500).json({ error: 'Failed to load workspace' });
+  }
+}
+
+export { createUser, deleteUser, getUserSummary, getUserTabGroups, getUserWorkspace };

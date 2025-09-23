@@ -7,6 +7,7 @@ import {
   CreateUserPayload,
   UserSummary,
   TabGroup,
+  WorkspaceResponse,
 } from '../models';
 
 @Injectable({ providedIn: 'root' })
@@ -33,6 +34,12 @@ export class UsersApiService {
 
   getUserTabGroups(userId: string): Observable<TabGroup[]> {
     return this.http.get<TabGroup[]>(`${this.baseUrl}/tab-groups`, {
+      headers: this.userHeaders(userId),
+    });
+  }
+
+  getWorkspace(userId: string): Observable<WorkspaceResponse> {
+    return this.http.get<WorkspaceResponse>(`${this.baseUrl}/workspace`, {
       headers: this.userHeaders(userId),
     });
   }

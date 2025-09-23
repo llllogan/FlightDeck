@@ -1,19 +1,26 @@
 import { Component, DestroyRef, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { forkJoin, of } from 'rxjs';
-import { catchError, finalize, map, switchMap } from 'rxjs/operators';
+import { of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 
-import { Environment, Tab, TabGroup, UserSummary, CreateTabPayload } from './models';
+import {
+  Environment,
+  Tab,
+  TabGroup,
+  UserSummary,
+  CreateTabPayload,
+  WorkspaceResponse,
+} from './models';
 import { CurrentUserService } from './services/current-user.service';
 import { UsersApiService } from './services/users-api.service';
 import { TabGroupsApiService } from './services/tab-groups-api.service';
 import { TabsApiService } from './services/tabs-api.service';
-import { EnvironmentsApiService } from './services/environments-api.service';
 import { ConstsApiService } from './services/consts-api.service';
 
 interface TabViewModel {
   tab: Tab;
+  environments: Environment[];
   primaryEnvironment?: Environment;
 }
 
@@ -44,7 +51,6 @@ export class AppComponent implements OnInit {
     private readonly usersApi: UsersApiService,
     private readonly tabGroupsApi: TabGroupsApiService,
     private readonly tabsApi: TabsApiService,
-    private readonly environmentsApi: EnvironmentsApiService,
     private readonly constsApi: ConstsApiService,
   ) {
     this.currentUser.userId$
@@ -53,8 +59,7 @@ export class AppComponent implements OnInit {
         if (userId) {
           this.userId = userId;
           this.loadEnvironmentCodes();
-          this.loadSummary(userId);
-          this.loadSections(userId);
+          this.loadWorkspace(userId);
         }
       });
   }
@@ -105,10 +110,7 @@ export class AppComponent implements OnInit {
       .createTabGroup(this.userId, { title: name })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: () => {
-          this.loadSections(this.userId!);
-          this.loadSummary(this.userId!);
-        },
+        next: () => this.loadWorkspace(this.userId!),
         error: (err) => this.handleError('Failed to create tab group.', err),
       });
   }
@@ -167,10 +169,7 @@ export class AppComponent implements OnInit {
       .createTab(this.userId, payload)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: () => {
-          this.loadSections(this.userId!);
-          this.loadSummary(this.userId!);
-        },
+        next: () => this.loadWorkspace(this.userId!),
         error: (err) => this.handleError('Failed to create tab.', err),
       });
   }
@@ -189,72 +188,47 @@ export class AppComponent implements OnInit {
       });
   }
 
-  private loadSummary(userId: string): void {
-    this.usersApi
-      .getSummary(userId)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (summary) => (this.summary = summary),
-        error: (err) => this.handleError('Failed to load workspace summary.', err),
-      });
-  }
-
-  private loadSections(userId: string): void {
+  private loadWorkspace(userId: string): void {
     this.loading = true;
     this.error = null;
     this.sections = [];
 
-    this.tabGroupsApi
-      .listTabGroups(userId)
+    this.usersApi
+      .getWorkspace(userId)
       .pipe(
-        switchMap((groups) => {
-          if (!groups.length) {
-            return of([] as TabSection[]);
-          }
-
-          const groupRequests = groups.map((group) =>
-            this.tabGroupsApi.listTabsForGroup(userId, group.id).pipe(
-              catchError(() => of([] as Tab[])),
-              switchMap((tabs) => {
-                if (!tabs.length) {
-                  return of({ group, tabs: [] as TabViewModel[] });
-                }
-
-                const tabRequests = tabs.map((tab) =>
-                  this.environmentsApi.listByTab(userId, tab.id).pipe(
-                    map((envs) => ({
-                      tab,
-                      primaryEnvironment: envs[0],
-                    })),
-                    catchError(() => of({ tab, primaryEnvironment: undefined })),
-                  ),
-                );
-
-                return forkJoin(tabRequests).pipe(
-                  map((tabModels) => ({
-                    group,
-                    tabs: tabModels,
-                  })),
-                );
-              }),
-            ),
-          );
-
-          return forkJoin(groupRequests);
-        }),
         catchError((err) => {
-          this.handleError('Failed to load tab groups.', err);
-          return of([] as TabSection[]);
-        }),
-        finalize(() => {
-          this.loading = false;
+          this.handleError('Failed to load workspace.', err);
+          return of<WorkspaceResponse | null>(null);
         }),
         takeUntilDestroyed(this.destroyRef),
       )
-      .subscribe((sections) => {
-        this.sections = sections;
-        this.error = null;
+      .subscribe((workspace) => {
+        if (!workspace) {
+          return;
+        }
+
+        this.summary = workspace.summary;
+        this.sections = workspace.tabGroups.map((group) => ({
+          group: {
+            id: group.id,
+            title: group.title,
+            createdAt: group.createdAt,
+            updatedAt: group.updatedAt,
+          },
+          tabs: group.tabs.map((tab) => ({
+            tab: {
+              id: tab.id,
+              title: tab.title,
+              createdAt: tab.createdAt,
+              updatedAt: tab.updatedAt,
+            },
+            environments: tab.environments,
+            primaryEnvironment: tab.environments[0],
+          })),
+        }));
+
         this.loading = false;
+        this.error = null;
       });
   }
 

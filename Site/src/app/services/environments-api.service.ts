@@ -2,12 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
-import {
-  CreateEnvironmentPayload,
-  CreateEnvironmentRequest,
-  Environment,
-  UpdateEnvironmentPayload,
-} from '../models';
+import { CreateEnvironmentRequest, Environment, UpdateEnvironmentPayload } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class EnvironmentsApiService {
