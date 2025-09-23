@@ -2,11 +2,12 @@
   "name": "flightdeck-api",
   "version": "1.0.0",
   "description": "Express API for FlightDeck with MySQL integration",
-  "main": "src/server.js",
+  "main": "dist/server.js",
   "type": "commonjs",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "ts-node --transpile-only src/server.ts"
   },
   "keywords": [
     "express",
@@ -19,5 +20,11 @@
     "dotenv": "^17.2.2",
     "express": "^5.1.0",
     "mysql2": "^3.15.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.17",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
   }
 }
