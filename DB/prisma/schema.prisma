@@ -1,0 +1,53 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String     @id @default(uuid()) @db.Char(36)
+  name      String
+  tabGroups TabGroup[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@map("users")
+}
+
+model TabGroup {
+  id        String   @id @default(uuid()) @db.Char(36)
+  title     String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String   @db.Char(36)
+  tabs      Tab[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("tabgroups")
+}
+
+model Tab {
+  id           String        @id @default(uuid()) @db.Char(36)
+  title        String
+  tabGroup     TabGroup      @relation(fields: [tabGroupId], references: [id], onDelete: Cascade)
+  tabGroupId   String        @db.Char(36)
+  environments Environment[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@map("tabs")
+}
+
+model Environment {
+  id        String   @id @default(uuid()) @db.Char(36)
+  url       String   @db.Text
+  tab       Tab      @relation(fields: [tabId], references: [id], onDelete: Cascade)
+  tabId     String   @db.Char(36)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("environments")
+}
