@@ -18,7 +18,27 @@ jobs:
           node-version: 20
 
       - name: Run Prisma migrations
-        run: npx --yes prisma migrate deploy --schema DB/prisma/schema.prisma
+        run: npx prisma generate
+
+      - name: Generate diff-based migration
+        run: |
+          ts=$(date +%s)_ci
+          dir="prisma/migrations/$ts"
+          mkdir -p "$dir"
+          echo "Writing diff migration to $dir/migration.sql"
+          # --- generate SQL (empty exit 0) --------------------------
+          npx prisma migrate diff \
+            --from-url="$DATABASE_URL" \
+            --to-schema-datamodel=prisma/schema.prisma \
+            --script > "$dir/migration.sql"
+          # --- drop the folder if SQL is empty ----------------------
+          if [ ! -s "$dir/migration.sql" ]; then
+            echo "No schema difference - removing empty migration."
+            rm -rf "$dir"
+          fi
+
+      - name: Deploy migrations
+        run: npx prisma migrate deploy
 
       - name: Seed views
         env:
