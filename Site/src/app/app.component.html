@@ -1,0 +1,48 @@
+<div class="min-h-screen bg-white text-slate-800">
+  <header class="sticky top-0 z-10 border-b border-slate-200 bg-white/80 backdrop-blur">
+    <div class="mx-auto max-w-6xl px-4 sm:px-6 py-3 flex items-center justify-between">
+      <div class="font-semibold tracking-tight">FlightDeck</div>
+      <div class="text-xs text-slate-500">Your launcher</div>
+    </div>
+  </header>
+
+  <main class="mx-auto max-w-6xl px-4 sm:px-6 py-6 space-y-8">
+    <section *ngFor="let section of sections; let i = index" class="space-y-3">
+      <h2 class="text-sm font-semibold text-slate-700">{{ section.name }}</h2>
+      <div class="relative -mx-4 sm:mx-0">
+        <div class="overflow-x-auto no-scrollbar px-4 sm:px-0">
+          <div class="flex gap-3 min-w-full pr-4">
+            <a *ngFor="let tab of section.tabs"
+               class="shrink-0 w-56 rounded-lg border border-slate-200 bg-white p-3 hover:border-slate-300 hover:shadow-sm transition"
+               [href]="tab.url" target="_self" rel="noopener">
+              <div class="flex items-center gap-3">
+                <img [src]="getFavicon(tab.url)" alt="" class="h-6 w-6 rounded" />
+                <div class="truncate text-sm text-slate-800">{{ tab.title }}</div>
+              </div>
+              <div class="mt-2 truncate text-xs text-slate-500">{{ tab.url }}</div>
+            </a>
+            <!-- Add Tab button card -->
+            <button type="button"
+                    class="shrink-0 w-56 rounded-lg border border-dashed border-slate-300 bg-white/80 p-3 text-slate-600 hover:border-slate-400 hover:bg-slate-50 transition"
+                    (click)="addTab(i)">
+              <div class="flex items-center gap-3">
+                <span class="grid h-6 w-6 place-items-center rounded bg-slate-100 text-slate-700">+</span>
+                <div class="truncate text-sm font-medium">Add Tab</div>
+              </div>
+              <div class="mt-2 text-xs text-slate-500">Add a URL to this section</div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Add Section button at the bottom -->
+    <div class="pt-2">
+      <button type="button"
+              class="w-full rounded-md border border-dashed border-slate-300 bg-white py-3 text-sm font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50 transition"
+              (click)="addSection()">
+        + Add Section
+      </button>
+    </div>
+  </main>
+</div>
