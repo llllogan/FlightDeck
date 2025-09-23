@@ -19,7 +19,7 @@ type RenameRequest = Request<TabParams, unknown, Partial<RenameTabRequest>>;
 
 type DeleteRequest = Request<TabParams>;
 
-export async function listTabs(req: Request, res: ListResponse): Promise<void> {
+async function listTabs(req: Request, res: ListResponse): Promise<void> {
   const { userId } = req;
 
   if (!userId) {
@@ -36,7 +36,7 @@ export async function listTabs(req: Request, res: ListResponse): Promise<void> {
   }
 }
 
-export async function createTab(req: CreateRequest, res: Response): Promise<void> {
+async function createTab(req: CreateRequest, res: Response): Promise<void> {
   const { userId } = req;
   const { tabGroupId, title } = req.body;
 
@@ -83,7 +83,7 @@ export async function createTab(req: CreateRequest, res: Response): Promise<void
   }
 }
 
-export async function renameTab(req: RenameRequest, res: Response): Promise<void> {
+async function renameTab(req: RenameRequest, res: Response): Promise<void> {
   const { userId } = req;
   const { tabId } = req.params;
   const { title } = req.body;
@@ -125,7 +125,7 @@ export async function renameTab(req: RenameRequest, res: Response): Promise<void
   }
 }
 
-export async function deleteTab(req: DeleteRequest, res: Response): Promise<void> {
+async function deleteTab(req: DeleteRequest, res: Response): Promise<void> {
   const { userId } = req;
   const { tabId } = req.params;
 
@@ -159,3 +159,5 @@ export async function deleteTab(req: DeleteRequest, res: Response): Promise<void
     res.status(500).json({ error: 'Failed to delete tab' });
   }
 }
+
+export { listTabs, createTab, renameTab, deleteTab };

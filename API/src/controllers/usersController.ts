@@ -22,7 +22,7 @@ type TabGroupsResponse = Response<UserTabGroupViewRow[] | { error: string }>;
 
 type StandardResponse = Response<Record<string, unknown>>;
 
-export async function createUser(req: CreateUserRequestHandler, res: StandardResponse): Promise<void> {
+async function createUser(req: CreateUserRequestHandler, res: StandardResponse): Promise<void> {
   const { name } = req.body;
 
   if (!name || typeof name !== 'string' || !name.trim()) {
@@ -51,7 +51,7 @@ export async function createUser(req: CreateUserRequestHandler, res: StandardRes
   }
 }
 
-export async function deleteUser(req: EmptyRequest, res: Response): Promise<void> {
+async function deleteUser(req: EmptyRequest, res: Response): Promise<void> {
   const { userId } = req;
 
   if (!userId) {
@@ -77,7 +77,7 @@ export async function deleteUser(req: EmptyRequest, res: Response): Promise<void
   }
 }
 
-export async function getUserSummary(req: EmptyRequest, res: SummaryResponse): Promise<void> {
+async function getUserSummary(req: EmptyRequest, res: SummaryResponse): Promise<void> {
   const { userId } = req;
 
   if (!userId) {
@@ -103,7 +103,7 @@ export async function getUserSummary(req: EmptyRequest, res: SummaryResponse): P
   }
 }
 
-export async function getUserTabGroups(req: EmptyRequest, res: TabGroupsResponse): Promise<void> {
+async function getUserTabGroups(req: EmptyRequest, res: TabGroupsResponse): Promise<void> {
   const { userId } = req;
 
   if (!userId) {
@@ -119,3 +119,5 @@ export async function getUserTabGroups(req: EmptyRequest, res: TabGroupsResponse
     res.status(500).json({ error: 'Failed to fetch user tab groups' });
   }
 }
+
+export { createUser, deleteUser, getUserSummary, getUserTabGroups };

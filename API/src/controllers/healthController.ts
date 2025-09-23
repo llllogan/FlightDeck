@@ -4,7 +4,7 @@ import { initDatabase, getPool } from '../db/pool';
 
 type HealthCheckRow = RowDataPacket & { result: number };
 
-export async function healthCheck(_req: Request, res: Response): Promise<void> {
+async function healthCheck(_req: Request, res: Response): Promise<void> {
   try {
     await initDatabase();
     const pool = getPool();
@@ -16,3 +16,11 @@ export async function healthCheck(_req: Request, res: Response): Promise<void> {
     res.status(500).json({ status: 'error', message });
   }
 }
+
+export { healthCheck };
+
+const healthController = {
+  healthCheck,
+};
+
+export default healthController;

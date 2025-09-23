@@ -22,7 +22,7 @@ type UpdateRequest = Request<EnvironmentParams, unknown, Partial<UpdateEnvironme
 
 type DeleteRequest = Request<EnvironmentParams>;
 
-export async function listEnvironments(req: Request, res: ListResponse): Promise<void> {
+async function listEnvironments(req: Request, res: ListResponse): Promise<void> {
   const { userId } = req;
 
   if (!userId) {
@@ -39,7 +39,7 @@ export async function listEnvironments(req: Request, res: ListResponse): Promise
   }
 }
 
-export async function createEnvironment(req: CreateRequest, res: Response): Promise<void> {
+async function createEnvironment(req: CreateRequest, res: Response): Promise<void> {
   const { userId } = req;
   const { tabId, name, url } = req.body;
 
@@ -94,7 +94,7 @@ export async function createEnvironment(req: CreateRequest, res: Response): Prom
   }
 }
 
-export async function updateEnvironment(req: UpdateRequest, res: Response): Promise<void> {
+async function updateEnvironment(req: UpdateRequest, res: Response): Promise<void> {
   const { userId } = req;
   const { environmentId } = req.params;
   const { name, url } = req.body;
@@ -144,7 +144,7 @@ export async function updateEnvironment(req: UpdateRequest, res: Response): Prom
   }
 }
 
-export async function deleteEnvironment(req: DeleteRequest, res: Response): Promise<void> {
+async function deleteEnvironment(req: DeleteRequest, res: Response): Promise<void> {
   const { userId } = req;
   const { environmentId } = req.params;
 
@@ -178,3 +178,10 @@ export async function deleteEnvironment(req: DeleteRequest, res: Response): Prom
     res.status(500).json({ error: 'Failed to delete environment' });
   }
 }
+
+export {
+  listEnvironments,
+  createEnvironment,
+  updateEnvironment,
+  deleteEnvironment,
+};

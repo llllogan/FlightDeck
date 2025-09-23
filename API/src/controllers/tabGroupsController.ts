@@ -23,7 +23,7 @@ type RenameRequest = Request<RenameParams, unknown, Partial<RenameTabGroupReques
 
 type DeleteRequest = Request<RenameParams>;
 
-export async function listTabGroups(req: Request, res: ListResponse): Promise<void> {
+async function listTabGroups(req: Request, res: ListResponse): Promise<void> {
   const { userId } = req;
 
   if (!userId) {
@@ -40,7 +40,7 @@ export async function listTabGroups(req: Request, res: ListResponse): Promise<vo
   }
 }
 
-export async function createTabGroup(req: CreateRequest, res: Response): Promise<void> {
+async function createTabGroup(req: CreateRequest, res: Response): Promise<void> {
   const { userId } = req;
   const { title } = req.body;
 
@@ -77,7 +77,7 @@ export async function createTabGroup(req: CreateRequest, res: Response): Promise
   }
 }
 
-export async function renameTabGroup(req: RenameRequest, res: Response): Promise<void> {
+async function renameTabGroup(req: RenameRequest, res: Response): Promise<void> {
   const { userId } = req;
   const { tabGroupId } = req.params;
   const { title } = req.body;
@@ -119,7 +119,7 @@ export async function renameTabGroup(req: RenameRequest, res: Response): Promise
   }
 }
 
-export async function deleteTabGroup(req: DeleteRequest, res: Response): Promise<void> {
+async function deleteTabGroup(req: DeleteRequest, res: Response): Promise<void> {
   const { userId } = req;
   const { tabGroupId } = req.params;
 
@@ -154,7 +154,7 @@ export async function deleteTabGroup(req: DeleteRequest, res: Response): Promise
   }
 }
 
-export async function getTabGroupSummary(req: Request, res: SummaryResponse): Promise<void> {
+async function getTabGroupSummary(req: Request, res: SummaryResponse): Promise<void> {
   const { userId } = req;
 
   if (!userId) {
@@ -170,3 +170,11 @@ export async function getTabGroupSummary(req: Request, res: SummaryResponse): Pr
     res.status(500).json({ error: 'Failed to fetch tab group summary' });
   }
 }
+
+export {
+  listTabGroups,
+  createTabGroup,
+  renameTabGroup,
+  deleteTabGroup,
+  getTabGroupSummary,
+};
