@@ -115,3 +115,7 @@ export async function getTabGroupSummaryForUser(userId: string): Promise<TabGrou
     [userId],
   );
 }
+
+export async function listEnvironmentsForTab(tabId: string): Promise<EnvironmentDetailViewRow[]> {
+  return queryAll<EnvironmentDetailViewRow>('SELECT * FROM environment_detail_view WHERE tabId = ?', [tabId]);
+}

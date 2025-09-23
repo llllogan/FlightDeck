@@ -5,6 +5,7 @@ import {
   getEnvironmentById,
   getLatestEnvironmentForTab,
   listEnvironmentsForUser,
+  listEnvironmentsForTab,
   type EnvironmentDetailViewRow,
 } from '../db/resourceAccess';
 import type {
@@ -16,6 +17,9 @@ import { serializeEnvironment } from '../serializers';
 type SerializedEnvironment = ReturnType<typeof serializeEnvironment>;
 
 type ListResponse = Response<SerializedEnvironment[] | { error: string }>;
+
+type TabEnvironmentsResponse = Response<SerializedEnvironment[] | { error: string }>;
+type TabEnvironmentRequest = Request<{ tabId: string }>;
 
 type CreateRequest = Request<unknown, unknown, Partial<CreateEnvironmentRequest>>;
 
@@ -40,6 +44,40 @@ async function listEnvironments(req: Request, res: ListResponse): Promise<void> 
   } catch (error) {
     console.error('Failed to list environments', error);
     res.status(500).json({ error: 'Failed to list environments' });
+  }
+}
+
+async function listEnvironmentsForTabHandler(
+  req: TabEnvironmentRequest,
+  res: TabEnvironmentsResponse,
+): Promise<void> {
+  const { userId } = req;
+  const { tabId } = req.params;
+
+  if (!userId) {
+    res.status(400).json({ error: 'Missing user context' });
+    return;
+  }
+
+  if (!tabId) {
+    res.status(400).json({ error: 'tabId path parameter is required' });
+    return;
+  }
+
+  try {
+    const tab = await getTabById(tabId);
+
+    if (!tab || tab.userId !== userId) {
+      res.status(404).json({ error: 'Tab not found' });
+      return;
+    }
+
+    const environments = await listEnvironmentsForTab(tabId);
+    const formatted = environments.map(serializeEnvironment);
+    res.json(formatted);
+  } catch (error) {
+    console.error('Failed to list environments for tab', error);
+    res.status(500).json({ error: 'Failed to list environments for tab' });
   }
 }
 
@@ -188,4 +226,5 @@ export {
   createEnvironment,
   updateEnvironment,
   deleteEnvironment,
+  listEnvironmentsForTabHandler,
 };

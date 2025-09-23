@@ -64,14 +64,6 @@ export function serializeEnvironment(row: EnvironmentDetailViewRow) {
     url: row.environmentUrl,
     createdAt: row.environmentCreatedAt,
     updatedAt: row.environmentUpdatedAt,
-    tab: {
-      id: row.tabId,
-      title: row.tabTitle,
-    },
-    tabGroup: {
-      id: row.tabGroupId,
-      title: row.tabGroupTitle,
-    },
   };
 }
 
