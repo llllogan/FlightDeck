@@ -55,6 +55,14 @@ export class AppComponent implements OnInit {
   editGroupForm: FormGroup | null = null;
   editingGroupContext: { sectionIndex: number } | null = null;
   editingGroupTabs: TabViewModel[] = [];
+  private readonly environmentEmojiMap = new Map<string, string>([
+    ['prd', '🟢'],
+    ['tst', '🟠'],
+    ['dev', '🔴'],
+    ['ci', '🟣'],
+    ['qa', '🔵'],
+    ['local', '🟡'],
+  ]);
 
   private userId: string | null = null;
 
@@ -207,6 +215,19 @@ export class AppComponent implements OnInit {
     } catch {
       return '';
     }
+  }
+
+  getEnvironmentEmoji(name: string | null | undefined): string {
+    const normalized = name?.trim().toLowerCase();
+    return (normalized && this.environmentEmojiMap.get(normalized)) ?? '⚪️';
+  }
+
+  getEnvironmentEmojiSequence(environments: Environment[] | null | undefined): string {
+    if (!environments?.length) {
+      return '';
+    }
+
+    return environments.map((env) => this.getEnvironmentEmoji(env.name)).join('');
   }
 
   private normalizeUrl(input: string): string {

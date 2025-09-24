@@ -78,8 +78,8 @@
                         class="flex items-center gap-1 rounded-full border border-slate-300 bg-white px-2 py-0.5 text-slate-600 shadow-sm transition hover:border-slate-400 hover:text-slate-700"
                         (click)="toggleEnvironmentMenu($event, tabView.tab.id)"
                       >
-                        <span>Environments</span>
-                        <span class="text-[10px]">▾</span>
+                        <span class="eading-none">{{ getEnvironmentEmojiSequence(tabView.environments) }}</span>
+                        <span class="sr-only">Environments</span>
                       </button>
 
                       <div
@@ -95,7 +95,7 @@
                           class="flex w-full items-center justify-between px-3 py-2 text-left text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
                           (click)="openEnvironment(env, $event)"
                         >
-                          <span>{{ env.name }}</span>
+                          <span>{{ getEnvironmentEmoji(env.name) }} {{ env.name }}</span>
                           <span class="text-[10px] text-slate-400">↗</span>
                         </button>
                       </div>
