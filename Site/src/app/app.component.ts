@@ -497,6 +497,37 @@ export class AppComponent implements OnInit {
       });
   }
 
+  deleteTabFromModal(): void {
+    if (!this.userId || !this.editingTabContext) {
+      return;
+    }
+
+    const { sectionIndex, tabIndex } = this.editingTabContext;
+    const section = this.sections[sectionIndex];
+    const tabView = section?.tabs?.[tabIndex];
+
+    if (!section || !tabView) {
+      return;
+    }
+
+    const tabId = tabView.tab.id;
+    this.error = null;
+
+    this.tabsApi
+      .deleteTab(this.userId, tabId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () =>
+          this.runInZone(() => {
+            this.closeEditTabModal();
+            if (this.userId) {
+              this.loadWorkspace(this.userId);
+            }
+          }),
+        error: (err) => this.handleError('Failed to delete tab.', err),
+      });
+  }
+
   closeEditTabModal(): void {
     this.editTabForm = null;
     this.editingTabContext = null;
