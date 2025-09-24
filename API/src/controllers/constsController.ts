@@ -4,7 +4,7 @@ export const ENVIRONMENT_CODES = ['prd', 'ci', 'qa', 'tst', 'dev', 'local'] as c
 export type EnvironmentCode = (typeof ENVIRONMENT_CODES)[number];
 
 function getEnvironments(_req: Request, res: Response): void {
-  res.json({ environments: ENVIRONMENT_CODES });
+  res.json(ENVIRONMENT_CODES);
 }
 
 export { getEnvironments };

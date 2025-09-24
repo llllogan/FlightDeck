@@ -25,11 +25,6 @@
     <section *ngFor="let section of sections; let i = index" class="space-y-3">
       <div class="flex items-center justify-between">
         <h2 class="text-sm font-semibold text-slate-700">{{ section.group.title }}</h2>
-        <button type="button"
-                class="rounded-md border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50 transition"
-                (click)="addTab(i)">
-          Add Tab
-        </button>
       </div>
       <div class="relative -mx-4 sm:mx-0">
         <div class="overflow-x-auto no-scrollbar px-4 sm:px-0">
@@ -95,14 +90,22 @@
               </div>
             </ng-container>
 
-            <button type="button"
-                    class="shrink-0 w-64 rounded-xl border border-dashed border-slate-300 bg-white/80 p-3 text-slate-600 hover:border-slate-400 hover:bg-slate-50 transition"
-                    (click)="addTab(i)">
-              <div class="flex items-center gap-3">
-                <span class="grid h-6 w-6 place-items-center rounded bg-slate-100 text-slate-700">+</span>
-                <div class="truncate text-sm font-medium">Add Tab</div>
+            <button
+              type="button"
+              class="shrink-0 w-64 rounded-xl border border-dashed border-slate-300 bg-white px-4 py-5 text-left transition hover:border-slate-400 hover:bg-slate-50"
+              (click)="openAddTabModal(i)"
+            >
+              <div class="flex items-start gap-3">
+                <span class="grid h-12 w-12 place-items-center rounded-xl border border-slate-200 bg-slate-50 text-lg font-semibold text-slate-500">
+                  +
+                </span>
+                <div class="min-w-0 flex-1">
+                  <div class="truncate text-sm font-semibold text-slate-900">Add Tab</div>
+                  <div class="mt-1 text-xs text-slate-500 line-clamp-1">
+                    Add a URL to this group
+                  </div>
+                </div>
               </div>
-              <div class="mt-2 text-xs text-slate-500">Add a URL to this group</div>
             </button>
           </div>
         </div>
@@ -112,9 +115,124 @@
     <div class="pt-4">
       <button type="button"
               class="w-full rounded-md border border-dashed border-slate-300 bg-white py-3 text-sm font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50 transition"
-              (click)="addSection()">
+              (click)="openAddGroupModal()">
         + Add Tab Group
       </button>
     </div>
   </main>
+
+  <ng-container *ngIf="addGroupForm as form">
+    <div class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm px-4"
+         (click)="closeAddGroupModal()">
+      <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200"
+           (click)="$event.stopPropagation()">
+        <form [formGroup]="form" (ngSubmit)="submitAddGroup()" class="space-y-6">
+          <header class="space-y-1">
+            <h3 class="text-lg font-semibold text-slate-900">Create tab group</h3>
+            <p class="text-sm text-slate-500">Group related tabs so you can launch environments faster.</p>
+          </header>
+
+          <div class="space-y-2">
+            <label for="group-title" class="text-xs font-medium uppercase tracking-wide text-slate-500">Group title</label>
+            <input id="group-title"
+                   type="text"
+                   formControlName="title"
+                   autocomplete="off"
+                   class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200" />
+            <div class="text-xs text-red-500" *ngIf="form.get('title')?.invalid && form.get('title')?.touched">
+              Title is required.
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-3">
+            <button type="button"
+                    class="rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                    (click)="closeAddGroupModal()">
+              Cancel
+            </button>
+            <button type="submit"
+                    class="rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+                    [disabled]="form.invalid">
+              Create group
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </ng-container>
+
+  <ng-container *ngIf="addTabForm as tabForm">
+    <div class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm px-4"
+         (click)="closeAddTabModal()">
+      <div class="w-full max-w-xl rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200"
+           (click)="$event.stopPropagation()">
+        <form [formGroup]="tabForm" (ngSubmit)="submitAddTab()" class="space-y-6">
+          <header class="space-y-1">
+            <h3 class="text-lg font-semibold text-slate-900">Create tab</h3>
+            <p class="text-sm text-slate-500">Add a tab and its primary environment in one step.</p>
+          </header>
+
+          <div class="space-y-2">
+            <label for="tab-title" class="text-xs font-medium uppercase tracking-wide text-slate-500">Tab title</label>
+            <input id="tab-title"
+                   type="text"
+                   formControlName="title"
+                   autocomplete="off"
+                   class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200" />
+            <div class="text-xs text-red-500" *ngIf="tabForm.get('title')?.invalid && tabForm.get('title')?.touched">
+              Title is required.
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <label for="environment-name" class="text-xs font-medium uppercase tracking-wide text-slate-500">Environment name</label>
+            <input id="environment-name"
+                   type="text"
+                   formControlName="environmentName"
+                   autocomplete="off"
+                   class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200" />
+            <div class="flex flex-wrap gap-2 text-xs">
+              <button type="button"
+                      *ngFor="let code of environmentCodes"
+                      class="rounded-full border border-slate-200 px-2 py-1 text-slate-600 hover:border-slate-300 hover:text-slate-800"
+                      (click)="tabForm.get('environmentName')?.setValue(code)">
+                {{ code }}
+              </button>
+            </div>
+            <div class="text-xs text-red-500" *ngIf="tabForm.get('environmentName')?.invalid && tabForm.get('environmentName')?.touched">
+              Environment name is required.
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <label for="environment-url" class="text-xs font-medium uppercase tracking-wide text-slate-500">Environment URL</label>
+            <input id="environment-url"
+                   type="text"
+                   formControlName="environmentUrl"
+                   placeholder="https://example.com"
+                   class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200" />
+            <div class="text-xs text-red-500" *ngIf="tabForm.get('environmentUrl')?.errors && tabForm.get('environmentUrl')?.touched">
+              <ng-container *ngIf="tabForm.get('environmentUrl')?.errors?.['invalidUrl']; else urlRequired">
+                Enter a valid URL.
+              </ng-container>
+              <ng-template #urlRequired>URL is required.</ng-template>
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-3">
+            <button type="button"
+                    class="rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                    (click)="closeAddTabModal()">
+              Cancel
+            </button>
+            <button type="submit"
+                    class="rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+                    [disabled]="tabForm.invalid">
+              Create tab
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </ng-container>
 </div>

@@ -19,7 +19,6 @@ export class CurrentUserService {
   constructor(private readonly usersApi: UsersApiService) {
     if (this.initialQueryUserId) {
       this.persistUserId(this.initialQueryUserId);
-      this.removeUserIdQueryParam();
     }
   }
 
@@ -72,15 +71,4 @@ export class CurrentUserService {
     }
   }
 
-  private removeUserIdQueryParam(): void {
-    try {
-      const url = new URL(window.location.href);
-      if (url.searchParams.has('userid')) {
-        url.searchParams.delete('userid');
-        window.history.replaceState({}, document.title, url.toString());
-      }
-    } catch {
-      // Ignore failures from manipulating history
-    }
-  }
 }

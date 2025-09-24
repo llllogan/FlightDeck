@@ -1,5 +1,6 @@
 import { Component, DestroyRef, HostListener, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
@@ -32,7 +33,7 @@ interface TabSection {
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css'],
 })
@@ -43,6 +44,9 @@ export class AppComponent implements OnInit {
   loading = false;
   error: string | null = null;
   openEnvironmentMenuForTab: string | null = null;
+  addGroupForm: FormGroup | null = null;
+  addTabForm: FormGroup | null = null;
+  activeTabSectionIndex: number | null = null;
 
   private userId: string | null = null;
 
@@ -53,6 +57,7 @@ export class AppComponent implements OnInit {
     private readonly tabGroupsApi: TabGroupsApiService,
     private readonly tabsApi: TabsApiService,
     private readonly constsApi: ConstsApiService,
+    private readonly formBuilder: FormBuilder,
   ) {
     this.currentUser.userId$
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -86,6 +91,23 @@ export class AppComponent implements OnInit {
   @HostListener('document:click')
   closeEnvironmentMenu(): void {
     this.openEnvironmentMenuForTab = null;
+  }
+
+  @HostListener('document:keydown.escape', ['$event'])
+  handleEscape(event: KeyboardEvent): void {
+    let closed = false;
+    if (this.addGroupForm) {
+      this.closeAddGroupModal();
+      closed = true;
+    }
+    if (this.addTabForm) {
+      this.closeAddTabModal();
+      closed = true;
+    }
+
+    if (closed) {
+      event.preventDefault();
+    }
   }
 
   launchPrimaryEnvironment(tabView: TabViewModel): void {
@@ -157,29 +179,52 @@ export class AppComponent implements OnInit {
     return Boolean(tabView.primaryEnvironment?.url);
   }
 
-  addSection(): void {
+  openAddGroupModal(): void {
     if (!this.userId) {
       this.handleError('User context unavailable.', null);
       return;
     }
 
-    const name = (window.prompt('New tab group name:') || '').trim();
-    if (!name) {
+    this.addGroupForm = this.formBuilder.group({
+      title: ['', [Validators.required, Validators.maxLength(120)]],
+    });
+  }
+
+  submitAddGroup(): void {
+    if (!this.userId || !this.addGroupForm) {
+      return;
+    }
+
+    if (this.addGroupForm.invalid) {
+      this.addGroupForm.markAllAsTouched();
+      return;
+    }
+
+    const title = (this.addGroupForm.value.title as string).trim();
+    if (!title) {
+      this.addGroupForm.get('title')?.setErrors({ required: true });
       return;
     }
 
     this.error = null;
 
     this.tabGroupsApi
-      .createTabGroup(this.userId, { title: name })
+      .createTabGroup(this.userId, { title })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: () => this.loadWorkspace(this.userId!),
+        next: () => {
+          this.closeAddGroupModal();
+          this.loadWorkspace(this.userId!);
+        },
         error: (err) => this.handleError('Failed to create tab group.', err),
       });
   }
 
-  addTab(sectionIndex: number): void {
+  closeAddGroupModal(): void {
+    this.addGroupForm = null;
+  }
+
+  openAddTabModal(sectionIndex: number): void {
     if (!this.userId) {
       this.handleError('User context unavailable.', null);
       return;
@@ -190,39 +235,58 @@ export class AppComponent implements OnInit {
       return;
     }
 
-    const titleInput = window.prompt('Tab title:');
-    if (!titleInput) {
+    this.activeTabSectionIndex = sectionIndex;
+    const defaultEnv = this.environmentCodes[0] ?? 'production';
+
+    this.addTabForm = this.formBuilder.group({
+      title: ['', [Validators.required, Validators.maxLength(120)]],
+      environmentName: [defaultEnv, [Validators.required, Validators.maxLength(60)]],
+      environmentUrl: ['', [Validators.required, Validators.maxLength(2048)]],
+    });
+  }
+
+  submitAddTab(): void {
+    if (!this.userId || this.activeTabSectionIndex === null || !this.addTabForm) {
       return;
     }
 
-    const title = titleInput.trim();
-    if (!title) {
+    if (this.addTabForm.invalid) {
+      this.addTabForm.markAllAsTouched();
       return;
     }
 
-    const envNameDefault = this.environmentCodes[0] ?? 'production';
-    const environmentNameInput = (window.prompt('Environment name:', envNameDefault) || envNameDefault).trim();
-    const environmentName = environmentNameInput || envNameDefault;
-
-    const urlInput = window.prompt('Environment URL (e.g. example.com):');
-    if (!urlInput) {
+    const section = this.sections[this.activeTabSectionIndex];
+    if (!section) {
       return;
     }
 
-    const normalizedUrl = this.normalizeUrl(urlInput);
+    const {
+      title,
+      environmentName,
+      environmentUrl,
+    } = this.addTabForm.value as {
+      title: string;
+      environmentName: string;
+      environmentUrl: string;
+    };
+
+    const sanitizedTitle = title.trim();
+    const sanitizedName = environmentName.trim() || (this.environmentCodes[0] ?? 'production');
+    const normalizedUrl = this.normalizeUrl(environmentUrl);
+
     try {
-      // Validate URL before sending to the API
       new URL(normalizedUrl);
     } catch {
-      window.alert('Invalid URL');
+      this.addTabForm.get('environmentUrl')?.setErrors({ invalidUrl: true });
+      this.addTabForm.get('environmentUrl')?.markAsTouched();
       return;
     }
 
     const payload: CreateTabPayload = {
       tabGroupId: section.group.id,
-      title,
+      title: sanitizedTitle,
       environment: {
-        name: environmentName,
+        name: sanitizedName,
         url: normalizedUrl,
       },
     };
@@ -233,9 +297,17 @@ export class AppComponent implements OnInit {
       .createTab(this.userId, payload)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: () => this.loadWorkspace(this.userId!),
+        next: () => {
+          this.closeAddTabModal();
+          this.loadWorkspace(this.userId!);
+        },
         error: (err) => this.handleError('Failed to create tab.', err),
       });
+  }
+
+  closeAddTabModal(): void {
+    this.addTabForm = null;
+    this.activeTabSectionIndex = null;
   }
 
   private loadEnvironmentCodes(): void {

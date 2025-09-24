@@ -91,10 +91,6 @@ export interface RenameTabPayload {
   title: string;
 }
 
-export interface EnvironmentCodesResponse {
-  environments: string[];
-}
-
 export interface HealthResponse {
   status: string;
   database?: string;

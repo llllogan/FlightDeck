@@ -3,7 +3,6 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
-import { EnvironmentCodesResponse } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class ConstsApiService {
@@ -13,7 +12,7 @@ export class ConstsApiService {
 
   getEnvironmentCodes(): Observable<string[]> {
     return this.http
-      .get<EnvironmentCodesResponse>(`${this.baseUrl}/environments`)
-      .pipe(map((response) => response.environments));
+      .get<string[]>(`${this.baseUrl}/environments`)
+      .pipe(map((environments) => environments ?? []));
   }
 }

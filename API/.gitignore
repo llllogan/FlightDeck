@@ -22,3 +22,5 @@ pids/
 .vscode/
 .idea/
 .DS_Store
+
+dist/
