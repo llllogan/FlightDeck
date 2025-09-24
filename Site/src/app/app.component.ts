@@ -52,6 +52,9 @@ export class AppComponent implements OnInit {
   editingTabContext: { sectionIndex: number; tabIndex: number } | null = null;
   removedEnvironmentIds: Set<string> = new Set();
   originalEnvironmentMap: Map<string, Environment> = new Map();
+  editGroupForm: FormGroup | null = null;
+  editingGroupContext: { sectionIndex: number } | null = null;
+  editingGroupTabs: TabViewModel[] = [];
 
   private userId: string | null = null;
 
@@ -115,6 +118,10 @@ export class AppComponent implements OnInit {
     }
     if (this.editTabForm) {
       this.closeEditTabModal();
+      closed = true;
+    }
+    if (this.editGroupForm) {
+      this.closeEditGroupModal();
       closed = true;
     }
 
@@ -236,6 +243,120 @@ export class AppComponent implements OnInit {
 
   closeAddGroupModal(): void {
     this.addGroupForm = null;
+  }
+
+  openEditGroupModal(sectionIndex: number, event?: MouseEvent): void {
+    event?.stopPropagation();
+
+    if (!this.userId) {
+      this.handleError('User context unavailable.', null);
+      return;
+    }
+
+    const section = this.sections[sectionIndex];
+    if (!section) {
+      return;
+    }
+
+    this.editingGroupContext = { sectionIndex };
+    this.editGroupForm = this.formBuilder.group({
+      title: [section.group.title, [Validators.required, Validators.maxLength(120)]],
+    });
+    this.editingGroupTabs = section.tabs;
+  }
+
+  submitEditGroup(): void {
+    if (!this.userId || !this.editGroupForm || !this.editingGroupContext) {
+      return;
+    }
+
+    if (this.editGroupForm.invalid) {
+      this.editGroupForm.markAllAsTouched();
+      return;
+    }
+
+    const { sectionIndex } = this.editingGroupContext;
+    const section = this.sections[sectionIndex];
+    if (!section) {
+      return;
+    }
+
+    const newTitle = (this.editGroupForm.value.title as string).trim();
+    if (!newTitle) {
+      this.editGroupForm.get('title')?.setErrors({ required: true });
+      return;
+    }
+
+    if (newTitle === section.group.title) {
+      this.closeEditGroupModal();
+      return;
+    }
+
+    this.error = null;
+
+    this.tabGroupsApi
+      .renameTabGroup(this.userId, section.group.id, { title: newTitle })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () =>
+          this.runInZone(() => {
+            this.closeEditGroupModal();
+            this.loadWorkspace(this.userId!);
+          }),
+        error: (err) => this.handleError('Failed to rename tab group.', err),
+      });
+  }
+
+  deleteGroupFromModal(): void {
+    if (!this.userId || !this.editingGroupContext) {
+      return;
+    }
+
+    const { sectionIndex } = this.editingGroupContext;
+    const section = this.sections[sectionIndex];
+    if (!section) {
+      return;
+    }
+
+    this.error = null;
+
+    this.tabGroupsApi
+      .deleteTabGroup(this.userId, section.group.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () =>
+          this.runInZone(() => {
+            this.closeEditGroupModal();
+            this.loadWorkspace(this.userId!);
+          }),
+        error: (err) => this.handleError('Failed to delete tab group.', err),
+      });
+  }
+
+  deleteTabFromGroup(tabId: string): void {
+    if (!this.userId) {
+      return;
+    }
+
+    this.error = null;
+
+    this.tabsApi
+      .deleteTab(this.userId, tabId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () =>
+          this.runInZone(() => {
+            this.editingGroupTabs = this.editingGroupTabs.filter((tab) => tab.tab.id !== tabId);
+            this.loadWorkspace(this.userId!);
+          }),
+        error: (err) => this.handleError('Failed to delete tab.', err),
+      });
+  }
+
+  closeEditGroupModal(): void {
+    this.editGroupForm = null;
+    this.editingGroupContext = null;
+    this.editingGroupTabs = [];
   }
 
   openAddTabModal(sectionIndex: number): void {

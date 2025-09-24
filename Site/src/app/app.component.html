@@ -24,7 +24,11 @@
 
     <section *ngFor="let section of sections; let i = index" class="space-y-3">
       <div class="flex items-center justify-between">
-        <h2 class="text-sm font-semibold text-slate-700">{{ section.group.title }}</h2>
+        <button type="button"
+                class="text-left text-sm font-semibold text-slate-700 hover:text-slate-900 hover:underline"
+                (click)="openEditGroupModal(i, $event)">
+          {{ section.group.title }}
+        </button>
       </div>
       <div class="relative -mx-4 sm:mx-0">
         <div class="overflow-x-auto no-scrollbar px-4 sm:px-0">
@@ -330,6 +334,76 @@
               <button type="submit"
                       class="rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
                       [disabled]="editForm.invalid">
+                Save changes
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </ng-container>
+
+  <ng-container *ngIf="editGroupForm as groupForm">
+    <div class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm px-4"
+         (click)="closeEditGroupModal()">
+      <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200"
+           (click)="$event.stopPropagation()">
+        <form [formGroup]="groupForm" (ngSubmit)="submitEditGroup()" class="space-y-6">
+          <header class="space-y-1">
+            <h3 class="text-lg font-semibold text-slate-900">Edit tab group</h3>
+            <p class="text-sm text-slate-500">Rename the group or manage its tabs.</p>
+          </header>
+
+          <div class="space-y-2">
+            <label for="edit-group-title" class="text-xs font-medium uppercase tracking-wide text-slate-500">Group title</label>
+            <input id="edit-group-title"
+                   type="text"
+                   formControlName="title"
+                   autocomplete="off"
+                   class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200" />
+            <div class="text-xs text-red-500" *ngIf="groupForm.get('title')?.invalid && groupForm.get('title')?.touched">
+              Title is required.
+            </div>
+          </div>
+
+          <section class="space-y-3">
+            <div class="flex items-center justify-between">
+              <h4 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Tabs in this group</h4>
+              <span class="text-xs text-slate-400">{{ editingGroupTabs.length }} total</span>
+            </div>
+
+            <div *ngIf="editingGroupTabs.length; else noTabs" class="space-y-2">
+              <div *ngFor="let tab of editingGroupTabs" class="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2 shadow-sm">
+                <span class="text-sm font-medium text-slate-700 truncate">{{ tab.tab.title }}</span>
+                <button type="button"
+                        class="text-xs font-medium text-red-600 hover:text-red-700"
+                        (click)="deleteTabFromGroup(tab.tab.id)">
+                  Delete
+                </button>
+              </div>
+            </div>
+            <ng-template #noTabs>
+              <div class="rounded-lg border border-dashed border-slate-300 px-3 py-4 text-center text-xs text-slate-500">
+                No tabs in this group.
+              </div>
+            </ng-template>
+          </section>
+
+          <div class="flex items-center justify-between">
+            <button type="button"
+                    class="rounded-md border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:border-red-300 hover:bg-red-50"
+                    (click)="deleteGroupFromModal()">
+              Delete group
+            </button>
+            <div class="flex gap-3">
+              <button type="button"
+                      class="rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                      (click)="closeEditGroupModal()">
+                Cancel
+              </button>
+              <button type="submit"
+                      class="rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+                      [disabled]="groupForm.invalid">
                 Save changes
               </button>
             </div>
