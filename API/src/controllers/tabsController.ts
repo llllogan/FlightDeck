@@ -6,7 +6,7 @@ import {
   getLatestTabForGroup,
   getLatestEnvironmentForTab,
 } from '../db/resourceAccess';
-import type { CreateTabRequest, RenameTabRequest } from '../models/requestBodies';
+import type { CreateTabRequest, MoveTabRequest, RenameTabRequest } from '../models/requestBodies';
 import { serializeEnvironment, serializeTab } from '../serializers';
 
 type SerializedTab = ReturnType<typeof serializeTab>;
@@ -19,6 +19,8 @@ type TabParams = { tabId: string };
 type RenameRequest = Request<TabParams, unknown, Partial<RenameTabRequest>>;
 
 type DeleteRequest = Request<TabParams>;
+
+type MoveRequest = Request<TabParams, unknown, Partial<MoveTabRequest>>;
 
 async function createTab(req: CreateRequest, res: Response): Promise<void> {
   const { userId } = req;
@@ -175,4 +177,45 @@ async function deleteTab(req: DeleteRequest, res: Response): Promise<void> {
   }
 }
 
-export { createTab, renameTab, deleteTab };
+async function moveTab(req: MoveRequest, res: Response): Promise<void> {
+  const { userId } = req;
+  const { tabId } = req.params;
+  const { direction } = req.body;
+
+  if (!userId) {
+    res.status(400).json({ error: 'Missing user context' });
+    return;
+  }
+
+  if (!tabId) {
+    res.status(400).json({ error: 'tabId path parameter is required' });
+    return;
+  }
+
+  if (direction !== 'up' && direction !== 'down') {
+    res.status(400).json({ error: 'direction must be "up" or "down"' });
+    return;
+  }
+
+  try {
+    const tab = await getTabById(tabId);
+
+    if (!tab) {
+      res.status(404).json({ error: 'Tab not found' });
+      return;
+    }
+
+    if (tab.userId !== userId) {
+      res.status(403).json({ error: 'You do not have access to this tab' });
+      return;
+    }
+
+    await callStoredProcedure('move_tab', [tabId, direction]);
+    res.status(204).send();
+  } catch (error) {
+    console.error('Failed to reorder tab', error);
+    res.status(500).json({ error: 'Failed to reorder tab' });
+  }
+}
+
+export { createTab, renameTab, deleteTab, moveTab };

@@ -4,6 +4,8 @@ import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import {
   CreateTabGroupPayload,
+  MoveDirection,
+  MoveTabGroupPayload,
   RenameTabGroupPayload,
   Tab,
   TabGroup,
@@ -30,6 +32,13 @@ export class TabGroupsApiService {
 
   renameTabGroup(userId: string, tabGroupId: string, payload: RenameTabGroupPayload): Observable<TabGroup> {
     return this.http.patch<TabGroup>(`${this.baseUrl}/${tabGroupId}`, payload, {
+      headers: this.userHeaders(userId),
+    });
+  }
+
+  moveTabGroup(userId: string, tabGroupId: string, direction: MoveDirection): Observable<void> {
+    const payload: MoveTabGroupPayload = { direction };
+    return this.http.post<void>(`${this.baseUrl}/${tabGroupId}/move`, payload, {
       headers: this.userHeaders(userId),
     });
   }

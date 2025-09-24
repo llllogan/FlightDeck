@@ -7,6 +7,7 @@ import { catchError } from 'rxjs/operators';
 
 import {
   Environment,
+  MoveDirection,
   Tab,
   TabGroup,
   UserSummary,
@@ -208,6 +209,99 @@ export class AppComponent implements OnInit {
     this.environmentMenuState = null;
   }
 
+  moveTabGroup(sectionIndex: number, direction: MoveDirection, event?: MouseEvent): void {
+    event?.stopPropagation();
+
+    if (!this.userId) {
+      this.handleError('User context unavailable.', null);
+      return;
+    }
+
+    const originalIndex = sectionIndex;
+    const section = this.sections[originalIndex];
+    if (!section) {
+      return;
+    }
+
+    const targetIndex = direction === 'up' ? originalIndex - 1 : originalIndex + 1;
+    if (targetIndex < 0 || targetIndex >= this.sections.length) {
+      return;
+    }
+
+    this.environmentMenuState = null;
+    this.sections = this.reorderList(this.sections, originalIndex, targetIndex);
+
+    if (this.editingGroupContext) {
+      if (this.editingGroupContext.sectionIndex === originalIndex) {
+        this.editingGroupContext = { sectionIndex: targetIndex };
+      } else if (this.editingGroupContext.sectionIndex === targetIndex) {
+        this.editingGroupContext = { sectionIndex: originalIndex };
+      }
+      this.syncEditingGroupTabs();
+    }
+
+    this.tabGroupsApi
+      .moveTabGroup(this.userId, section.group.id, direction)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          if (this.userId) {
+            this.loadWorkspace(this.userId);
+          }
+        },
+        error: (err) => {
+          console.error('Failed to reorder tab group.', err);
+          this.error = 'Failed to reorder tab group.';
+          if (this.userId) {
+            this.loadWorkspace(this.userId);
+          }
+        },
+      });
+  }
+
+  moveTabWithinGroup(tabIndex: number, direction: MoveDirection): void {
+    if (!this.userId || !this.editingGroupContext) {
+      return;
+    }
+
+    const { sectionIndex } = this.editingGroupContext;
+    const section = this.sections[sectionIndex];
+    const currentTab = this.editingGroupTabs[tabIndex];
+
+    if (!section || !currentTab) {
+      return;
+    }
+
+    const targetIndex = direction === 'up' ? tabIndex - 1 : tabIndex + 1;
+    if (targetIndex < 0 || targetIndex >= this.editingGroupTabs.length) {
+      return;
+    }
+
+    this.editingGroupTabs = this.reorderList(this.editingGroupTabs, tabIndex, targetIndex);
+    this.sections = this.sections.map((s, idx) =>
+      idx === sectionIndex ? { ...s, tabs: this.reorderList(s.tabs, tabIndex, targetIndex) } : s,
+    );
+    this.syncEditingGroupTabs();
+
+    this.tabsApi
+      .moveTab(this.userId, currentTab.tab.id, direction)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          if (this.userId) {
+            this.loadWorkspace(this.userId);
+          }
+        },
+        error: (err) => {
+          console.error('Failed to reorder tab.', err);
+          this.error = 'Failed to reorder tab.';
+          if (this.userId) {
+            this.loadWorkspace(this.userId);
+          }
+        },
+      });
+  }
+
   getFavicon(url: string): string {
     try {
       const u = new URL(url);
@@ -319,7 +413,7 @@ export class AppComponent implements OnInit {
     this.editGroupForm = this.formBuilder.group({
       title: [section.group.title, [Validators.required, Validators.maxLength(120)]],
     });
-    this.editingGroupTabs = section.tabs;
+    this.editingGroupTabs = [...section.tabs];
   }
 
   submitEditGroup(): void {
@@ -405,6 +499,11 @@ export class AppComponent implements OnInit {
           this.runInZone(() => {
             this.environmentMenuState = null;
             this.editingGroupTabs = this.editingGroupTabs.filter((tab) => tab.tab.id !== tabId);
+            this.sections = this.sections.map((section) => ({
+              ...section,
+              tabs: section.tabs.filter((tabView) => tabView.tab.id !== tabId),
+            }));
+            this.syncEditingGroupTabs();
             this.loadWorkspace(this.userId!);
           }),
         error: (err) => this.handleError('Failed to delete tab.', err),
@@ -758,27 +857,47 @@ export class AppComponent implements OnInit {
           }
 
           this.summary = workspace.summary;
-          this.sections = workspace.tabGroups.map((group) => ({
-            group: {
-              id: group.id,
-              title: group.title,
-              createdAt: group.createdAt,
-              updatedAt: group.updatedAt,
-            },
-            tabs: group.tabs.map((tab) => ({
-              tab: {
-                id: tab.id,
-                title: tab.title,
-                createdAt: tab.createdAt,
-                updatedAt: tab.updatedAt,
+
+          const sortedGroups = [...workspace.tabGroups].sort((a, b) => {
+            if (a.sortOrder !== b.sortOrder) {
+              return a.sortOrder - b.sortOrder;
+            }
+            return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          });
+
+          this.sections = sortedGroups.map((group) => {
+            const sortedTabs = [...group.tabs].sort((a, b) => {
+              if (a.sortOrder !== b.sortOrder) {
+                return a.sortOrder - b.sortOrder;
+              }
+              return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+            });
+
+            return {
+              group: {
+                id: group.id,
+                title: group.title,
+                sortOrder: group.sortOrder,
+                createdAt: group.createdAt,
+                updatedAt: group.updatedAt,
               },
-              environments: tab.environments,
-              primaryEnvironment: this.getPrimaryEnvironment(tab.environments),
-            })),
-          }));
+              tabs: sortedTabs.map((tab) => ({
+                tab: {
+                  id: tab.id,
+                  title: tab.title,
+                  sortOrder: tab.sortOrder,
+                  createdAt: tab.createdAt,
+                  updatedAt: tab.updatedAt,
+                },
+                environments: tab.environments,
+                primaryEnvironment: this.getPrimaryEnvironment(tab.environments),
+              })),
+            };
+          });
 
           this.loading = false;
           this.error = null;
+          this.syncEditingGroupTabs();
         });
       });
   }
@@ -786,6 +905,28 @@ export class AppComponent implements OnInit {
   private getPrimaryEnvironment(environments: Environment[]): Environment | undefined {
     const prd = environments.find((env) => env.name.toLowerCase() === 'prd');
     return prd ?? environments[0];
+  }
+
+  private syncEditingGroupTabs(): void {
+    if (!this.editGroupForm || !this.editingGroupContext) {
+      return;
+    }
+
+    const section = this.sections[this.editingGroupContext.sectionIndex];
+    if (section) {
+      this.editingGroupTabs = [...section.tabs];
+    }
+  }
+
+  private reorderList<T>(list: T[], fromIndex: number, toIndex: number): T[] {
+    if (fromIndex === toIndex) {
+      return [...list];
+    }
+
+    const next = [...list];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    return next;
   }
 
   private handleError(message: string, err: unknown): void {

@@ -16,6 +16,7 @@ export interface UserSummary {
 export interface TabGroup {
   id: string;
   title: string;
+  sortOrder: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -30,6 +31,7 @@ export interface TabGroupSummary {
 export interface Tab {
   id: string;
   title: string;
+  sortOrder: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -79,6 +81,16 @@ export interface UpdateEnvironmentPayload {
 
 export interface CreateEnvironmentRequest extends CreateEnvironmentPayload {
   tabId: string;
+}
+
+export type MoveDirection = 'up' | 'down';
+
+export interface MoveTabGroupPayload {
+  direction: MoveDirection;
+}
+
+export interface MoveTabPayload {
+  direction: MoveDirection;
 }
 
 export interface CreateTabPayload {

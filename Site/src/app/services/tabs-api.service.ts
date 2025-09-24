@@ -2,7 +2,14 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { CreateTabPayload, RenameTabPayload, Tab, Environment } from '../models';
+import {
+  CreateTabPayload,
+  MoveDirection,
+  MoveTabPayload,
+  RenameTabPayload,
+  Tab,
+  Environment,
+} from '../models';
 
 type TabCreateResponse = Tab & { environment?: Environment };
 
@@ -20,6 +27,13 @@ export class TabsApiService {
 
   renameTab(userId: string, tabId: string, payload: RenameTabPayload): Observable<Tab> {
     return this.http.patch<Tab>(`${this.baseUrl}/${tabId}`, payload, {
+      headers: this.userHeaders(userId),
+    });
+  }
+
+  moveTab(userId: string, tabId: string, direction: MoveDirection): Observable<void> {
+    const payload: MoveTabPayload = { direction };
+    return this.http.post<void>(`${this.baseUrl}/${tabId}/move`, payload, {
       headers: this.userHeaders(userId),
     });
   }

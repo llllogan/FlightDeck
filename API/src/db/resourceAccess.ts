@@ -12,6 +12,7 @@ export interface UserTabGroupViewRow {
   userName: string;
   tabGroupId: string | null;
   tabGroupTitle: string | null;
+  tabGroupSortOrder: number | null;
   tabGroupCreatedAt: Date | null;
   tabGroupUpdatedAt: Date | null;
 }
@@ -19,6 +20,7 @@ export interface UserTabGroupViewRow {
 export interface TabDetailViewRow {
   tabId: string;
   tabTitle: string;
+  tabSortOrder: number;
   tabCreatedAt: Date;
   tabUpdatedAt: Date;
   tabGroupId: string;
@@ -69,7 +71,10 @@ export async function getLatestTabGroupForUser(userId: string): Promise<UserTabG
 }
 
 export async function listTabGroupsForUser(userId: string): Promise<UserTabGroupViewRow[]> {
-  return queryAll<UserTabGroupViewRow>('SELECT * FROM user_tabgroups_view WHERE userId = ?', [userId]);
+  return queryAll<UserTabGroupViewRow>(
+    'SELECT * FROM user_tabgroups_view WHERE userId = ? ORDER BY tabGroupSortOrder ASC, tabGroupCreatedAt ASC',
+    [userId],
+  );
 }
 
 export async function getTabById(tabId: string): Promise<TabDetailViewRow | undefined> {
@@ -84,7 +89,10 @@ export async function getLatestTabForGroup(tabGroupId: string): Promise<TabDetai
 }
 
 export async function listTabsForTabGroup(tabGroupId: string): Promise<TabDetailViewRow[]> {
-  return queryAll<TabDetailViewRow>('SELECT * FROM tab_detail_view WHERE tabGroupId = ?', [tabGroupId]);
+  return queryAll<TabDetailViewRow>(
+    'SELECT * FROM tab_detail_view WHERE tabGroupId = ? ORDER BY tabSortOrder ASC, tabCreatedAt ASC',
+    [tabGroupId],
+  );
 }
 
 export async function getEnvironmentById(environmentId: string): Promise<EnvironmentDetailViewRow | undefined> {

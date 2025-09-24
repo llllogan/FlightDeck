@@ -10,7 +10,11 @@ import {
   type UserTabGroupViewRow,
   type TabGroupSummaryRow,
 } from '../db/resourceAccess';
-import type { CreateTabGroupRequest, RenameTabGroupRequest } from '../models/requestBodies';
+import type {
+  CreateTabGroupRequest,
+  MoveTabGroupRequest,
+  RenameTabGroupRequest,
+} from '../models/requestBodies';
 import { isCompleteTabGroupRow, serializeTab, serializeTabGroup, serializeTabGroupSummary } from '../serializers';
 
 type SerializedTabGroup = ReturnType<typeof serializeTabGroup>;
@@ -30,6 +34,8 @@ type RenameParams = { tabGroupId: string };
 type RenameRequest = Request<RenameParams, unknown, Partial<RenameTabGroupRequest>>;
 
 type DeleteRequest = Request<RenameParams>;
+
+type MoveRequest = Request<RenameParams, unknown, Partial<MoveTabGroupRequest>>;
 
 type TabsRequestParams = { tabGroupId: string };
 
@@ -179,6 +185,47 @@ async function deleteTabGroup(req: DeleteRequest, res: Response): Promise<void> 
   }
 }
 
+async function moveTabGroup(req: MoveRequest, res: Response): Promise<void> {
+  const { userId } = req;
+  const { tabGroupId } = req.params;
+  const { direction } = req.body;
+
+  if (!userId) {
+    res.status(400).json({ error: 'Missing user context' });
+    return;
+  }
+
+  if (!tabGroupId) {
+    res.status(400).json({ error: 'tabGroupId path parameter is required' });
+    return;
+  }
+
+  if (direction !== 'up' && direction !== 'down') {
+    res.status(400).json({ error: 'direction must be "up" or "down"' });
+    return;
+  }
+
+  try {
+    const existing = await getTabGroupById(tabGroupId);
+
+    if (!existing) {
+      res.status(404).json({ error: 'Tab group not found' });
+      return;
+    }
+
+    if (existing.userId !== userId) {
+      res.status(403).json({ error: 'You do not have access to this tab group' });
+      return;
+    }
+
+    await callStoredProcedure('move_tab_group', [tabGroupId, direction]);
+    res.status(204).send();
+  } catch (error) {
+    console.error('Failed to reorder tab group', error);
+    res.status(500).json({ error: 'Failed to reorder tab group' });
+  }
+}
+
 async function getTabGroupSummary(req: Request, res: SummaryResponse): Promise<void> {
   const { userId } = req;
 
@@ -233,6 +280,7 @@ export {
   createTabGroup,
   renameTabGroup,
   deleteTabGroup,
+  moveTabGroup,
   getTabGroupSummary,
   listTabsForGroup,
 };

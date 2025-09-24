@@ -26,6 +26,7 @@ export function serializeUserSummary(row: UserSummaryRow) {
 export type CompleteTabGroupRow = UserTabGroupViewRow & {
   tabGroupId: string;
   tabGroupTitle: string;
+  tabGroupSortOrder: number;
   tabGroupCreatedAt: Date;
   tabGroupUpdatedAt: Date;
 };
@@ -34,6 +35,7 @@ export function isCompleteTabGroupRow(row: UserTabGroupViewRow): row is Complete
   return Boolean(
     row.tabGroupId &&
       row.tabGroupTitle &&
+      row.tabGroupSortOrder !== null &&
       row.tabGroupCreatedAt &&
       row.tabGroupUpdatedAt,
   );
@@ -43,6 +45,7 @@ export function serializeTabGroup(row: CompleteTabGroupRow) {
   return {
     id: row.tabGroupId,
     title: row.tabGroupTitle,
+    sortOrder: row.tabGroupSortOrder,
     createdAt: row.tabGroupCreatedAt,
     updatedAt: row.tabGroupUpdatedAt,
   };
@@ -52,6 +55,7 @@ export function serializeTab(row: TabDetailViewRow) {
   return {
     id: row.tabId,
     title: row.tabTitle,
+    sortOrder: row.tabSortOrder,
     createdAt: row.tabCreatedAt,
     updatedAt: row.tabUpdatedAt,
   };

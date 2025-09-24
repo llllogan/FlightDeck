@@ -15,8 +15,15 @@ CREATE PROCEDURE create_tab_group (
     IN p_title   VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
 )
 BEGIN
-    INSERT INTO tabgroups (id, userId, title, createdAt, updatedAt)
-    VALUES (UUID(), p_user_id, p_title, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+    DECLARE nextOrder INT;
+
+    SELECT COALESCE(MAX(sortOrder), 0) + 1
+      INTO nextOrder
+      FROM tabgroups
+     WHERE userId = p_user_id;
+
+    INSERT INTO tabgroups (id, userId, title, sortOrder, createdAt, updatedAt)
+    VALUES (UUID(), p_user_id, p_title, nextOrder, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 END $$
 
 DROP PROCEDURE IF EXISTS create_tab $$
@@ -25,8 +32,15 @@ CREATE PROCEDURE create_tab (
     IN p_title        VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
 )
 BEGIN
-    INSERT INTO tabs (id, tabGroupId, title, createdAt, updatedAt)
-    VALUES (UUID(), p_tab_group_id, p_title, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+    DECLARE nextOrder INT;
+
+    SELECT COALESCE(MAX(sortOrder), 0) + 1
+      INTO nextOrder
+      FROM tabs
+     WHERE tabGroupId = p_tab_group_id;
+
+    INSERT INTO tabs (id, tabGroupId, title, sortOrder, createdAt, updatedAt)
+    VALUES (UUID(), p_tab_group_id, p_title, nextOrder, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 END $$
 
 DROP PROCEDURE IF EXISTS create_environment $$
@@ -103,6 +117,106 @@ CREATE PROCEDURE delete_environment (
 BEGIN
     DELETE FROM environments
     WHERE id = p_environment_id;
+END $$
+
+DROP PROCEDURE IF EXISTS move_tab_group $$
+CREATE PROCEDURE move_tab_group (
+    IN p_tab_group_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    IN p_direction ENUM('up', 'down')
+)
+BEGIN
+    DECLARE v_user_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    DECLARE v_current_order INT;
+    DECLARE v_neighbor_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    DECLARE v_neighbor_order INT;
+
+    SELECT userId, sortOrder
+      INTO v_user_id, v_current_order
+      FROM tabgroups
+     WHERE id = p_tab_group_id
+     LIMIT 1;
+
+    IF v_user_id IS NOT NULL THEN
+        IF p_direction = 'up' THEN
+            SELECT id, sortOrder
+              INTO v_neighbor_id, v_neighbor_order
+              FROM tabgroups
+             WHERE userId = v_user_id
+               AND sortOrder < v_current_order
+             ORDER BY sortOrder DESC
+             LIMIT 1;
+        ELSEIF p_direction = 'down' THEN
+            SELECT id, sortOrder
+              INTO v_neighbor_id, v_neighbor_order
+              FROM tabgroups
+             WHERE userId = v_user_id
+               AND sortOrder > v_current_order
+             ORDER BY sortOrder ASC
+             LIMIT 1;
+        END IF;
+
+        IF v_neighbor_id IS NOT NULL THEN
+            UPDATE tabgroups
+               SET sortOrder = v_neighbor_order,
+                   updatedAt = CURRENT_TIMESTAMP
+             WHERE id = p_tab_group_id;
+
+            UPDATE tabgroups
+               SET sortOrder = v_current_order,
+                   updatedAt = CURRENT_TIMESTAMP
+             WHERE id = v_neighbor_id;
+        END IF;
+    END IF;
+END $$
+
+DROP PROCEDURE IF EXISTS move_tab $$
+CREATE PROCEDURE move_tab (
+    IN p_tab_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    IN p_direction ENUM('up', 'down')
+)
+BEGIN
+    DECLARE v_tab_group_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    DECLARE v_current_order INT;
+    DECLARE v_neighbor_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    DECLARE v_neighbor_order INT;
+
+    SELECT tabGroupId, sortOrder
+      INTO v_tab_group_id, v_current_order
+      FROM tabs
+     WHERE id = p_tab_id
+     LIMIT 1;
+
+    IF v_tab_group_id IS NOT NULL THEN
+        IF p_direction = 'up' THEN
+            SELECT id, sortOrder
+              INTO v_neighbor_id, v_neighbor_order
+              FROM tabs
+             WHERE tabGroupId = v_tab_group_id
+               AND sortOrder < v_current_order
+             ORDER BY sortOrder DESC
+             LIMIT 1;
+        ELSEIF p_direction = 'down' THEN
+            SELECT id, sortOrder
+              INTO v_neighbor_id, v_neighbor_order
+              FROM tabs
+             WHERE tabGroupId = v_tab_group_id
+               AND sortOrder > v_current_order
+             ORDER BY sortOrder ASC
+             LIMIT 1;
+        END IF;
+
+        IF v_neighbor_id IS NOT NULL THEN
+            UPDATE tabs
+               SET sortOrder = v_neighbor_order,
+                   updatedAt = CURRENT_TIMESTAMP
+             WHERE id = p_tab_id;
+
+            UPDATE tabs
+               SET sortOrder = v_current_order,
+                   updatedAt = CURRENT_TIMESTAMP
+             WHERE id = v_neighbor_id;
+        END IF;
+    END IF;
 END $$
 
 DROP PROCEDURE IF EXISTS delete_user $$

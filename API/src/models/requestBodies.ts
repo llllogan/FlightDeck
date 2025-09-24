@@ -10,6 +10,12 @@ export interface RenameTabGroupRequest {
   title: string;
 }
 
+export type MoveDirection = 'up' | 'down';
+
+export interface MoveTabGroupRequest {
+  direction: MoveDirection;
+}
+
 export interface CreateTabRequest {
   tabGroupId: string;
   title: string;
@@ -21,6 +27,10 @@ export interface CreateTabRequest {
 
 export interface RenameTabRequest {
   title: string;
+}
+
+export interface MoveTabRequest {
+  direction: MoveDirection;
 }
 
 export interface CreateEnvironmentRequest {

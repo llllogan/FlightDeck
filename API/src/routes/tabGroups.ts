@@ -4,6 +4,7 @@ import {
   createTabGroup,
   renameTabGroup,
   deleteTabGroup,
+  moveTabGroup,
   getTabGroupSummary,
   listTabsForGroup,
 } from '../controllers/tabGroupsController';
@@ -16,6 +17,7 @@ router.get('/', listTabGroups);
 router.post('/', createTabGroup);
 router.get('/summary', getTabGroupSummary);
 router.patch('/:tabGroupId', renameTabGroup);
+router.post('/:tabGroupId/move', moveTabGroup);
 router.delete('/:tabGroupId', deleteTabGroup);
 router.get('/:tabGroupId/tabs', listTabsForGroup);
 

@@ -5,6 +5,7 @@ SELECT
     u.name      AS userName,
     tg.id       AS tabGroupId,
     tg.title    AS tabGroupTitle,
+    tg.sortOrder AS tabGroupSortOrder,
     tg.createdAt AS tabGroupCreatedAt,
     tg.updatedAt AS tabGroupUpdatedAt
 FROM users u
@@ -15,6 +16,7 @@ CREATE OR REPLACE VIEW tab_detail_view AS
 SELECT
     t.id        AS tabId,
     t.title     AS tabTitle,
+    t.sortOrder AS tabSortOrder,
     t.createdAt AS tabCreatedAt,
     t.updatedAt AS tabUpdatedAt,
     tg.id       AS tabGroupId,
