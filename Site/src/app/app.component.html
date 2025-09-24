@@ -63,11 +63,18 @@
                   (keydown.space)="onCardKeydown($event, tabView)"
                 >
                   <div class="flex items-start gap-3">
-                    <img
-                      [src]="getFavicon(tabView.primaryEnvironment?.url || '')"
-                      alt=""
-                      class="h-12 w-12 flex-none rounded-xl"
-                    />
+                    <div class="h-12 w-12 flex-none">
+                      <img
+                        *ngIf="shouldShowFavicon(tabView)"
+                        [src]="tabView.faviconUrl || undefined"
+                        alt=""
+                        class="h-12 w-12 rounded-xl object-cover"
+                        (error)="handleFaviconError(tabView)"
+                      />
+                      <div *ngIf="!shouldShowFavicon(tabView)" class="favicon-placeholder h-12 w-12 rounded-xl">
+                        {{ getMonogram(tabView.tab.title) }}
+                      </div>
+                    </div>
                     <div class="min-w-0 flex-1">
                       <div class="truncate text-sm font-semibold text-slate-900">
                         {{ tabView.tab.title }}
@@ -78,7 +85,7 @@
                     </div>
                   </div>
 
-                  <div class="mt-4 flex items-center justify-end gap-2 text-xs">
+                  <div class="mt-4 flex items-center gap-2 text-xs">
                     <button
                       type="button"
                       class="flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
@@ -87,7 +94,7 @@
                       <span>✏️</span>
                     </button>
 
-                    <div class="relative" *ngIf="tabView.environments.length">
+                    <div class="relative ml-auto" *ngIf="tabView.environments.length">
                       <button
                         type="button"
                         class="flex items-center gap-1 rounded-full border border-slate-300 bg-white px-2 py-0.5 text-slate-600 shadow-sm transition hover:border-slate-400 hover:text-slate-700"

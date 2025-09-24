@@ -20,11 +20,13 @@ import { TabGroupsApiService } from './services/tab-groups-api.service';
 import { TabsApiService } from './services/tabs-api.service';
 import { EnvironmentsApiService } from './services/environments-api.service';
 import { ConstsApiService } from './services/consts-api.service';
+import { environment as appEnvironment } from '../environments/environment';
 
 interface TabViewModel {
   tab: Tab;
   environments: Environment[];
   primaryEnvironment?: Environment;
+  faviconUrl: string | null;
 }
 
 interface TabSection {
@@ -64,6 +66,7 @@ export class AppComponent implements OnInit {
     ['qa', '🔵'],
     ['local', '🟡'],
   ]);
+  private readonly faviconErrorTabIds: Set<string> = new Set();
 
   private userId: string | null = null;
 
@@ -209,6 +212,40 @@ export class AppComponent implements OnInit {
     this.environmentMenuState = null;
   }
 
+  shouldShowFavicon(tabView: TabViewModel): boolean {
+    return Boolean(tabView.faviconUrl) && !this.faviconErrorTabIds.has(tabView.tab.id);
+  }
+
+  handleFaviconError(tabView: TabViewModel): void {
+    this.ngZone.run(() => {
+      this.faviconErrorTabIds.add(tabView.tab.id);
+      tabView.faviconUrl = null;
+    });
+  }
+
+  getMonogram(title: string | null | undefined): string {
+    const cleaned = (title ?? '').trim();
+    if (!cleaned) {
+      return '•';
+    }
+
+    const words = cleaned.split(/\s+/).filter(Boolean);
+    if (words.length > 1) {
+      const first = words[0]?.charAt(0) ?? '';
+      const second = words[1]?.charAt(0) ?? '';
+      const monogram = `${first}${second}`.toUpperCase();
+      return monogram || cleaned.slice(0, 2).toUpperCase();
+    }
+
+    const word = words[0];
+    const capitals = word.match(/[A-Z]/g) ?? [];
+    if (capitals.length >= 2) {
+      return (capitals[0] + capitals[1]).toUpperCase();
+    }
+
+    return word.charAt(0).toUpperCase();
+  }
+
   moveTabGroup(sectionIndex: number, direction: MoveDirection, event?: MouseEvent): void {
     event?.stopPropagation();
 
@@ -302,12 +339,19 @@ export class AppComponent implements OnInit {
       });
   }
 
-  getFavicon(url: string): string {
+  getFavicon(url: string): string | null {
+    if (!url) {
+      return null;
+    }
+
     try {
-      const u = new URL(url);
-      return `https://www.google.com/s2/favicons?domain=${u.hostname}&sz=64`;
+      const normalized = this.normalizeForNavigation(url);
+      // Validate URL parsing
+      new URL(normalized);
+      const apiBase = appEnvironment.apiBaseUrl?.replace(/\/$/, '') ?? '';
+      return `${apiBase}/favicons?url=${encodeURIComponent(normalized)}`;
     } catch {
-      return '';
+      return null;
     }
   }
 
@@ -504,6 +548,7 @@ export class AppComponent implements OnInit {
               tabs: section.tabs.filter((tabView) => tabView.tab.id !== tabId),
             }));
             this.syncEditingGroupTabs();
+            this.faviconErrorTabIds.delete(tabId);
             this.loadWorkspace(this.userId!);
           }),
         error: (err) => this.handleError('Failed to delete tab.', err),
@@ -858,6 +903,8 @@ export class AppComponent implements OnInit {
 
           this.summary = workspace.summary;
 
+          const visibleTabIds = new Set<string>();
+
           const sortedGroups = [...workspace.tabGroups].sort((a, b) => {
             if (a.sortOrder !== b.sortOrder) {
               return a.sortOrder - b.sortOrder;
@@ -891,8 +938,20 @@ export class AppComponent implements OnInit {
                 },
                 environments: tab.environments,
                 primaryEnvironment: this.getPrimaryEnvironment(tab.environments),
+                faviconUrl: this.faviconErrorTabIds.has(tab.id)
+                  ? null
+                  : this.getFavicon(this.getPrimaryEnvironment(tab.environments)?.url ?? ''),
               })),
             };
+          });
+
+          this.sections.forEach((section) =>
+            section.tabs.forEach((tabView) => visibleTabIds.add(tabView.tab.id)),
+          );
+          Array.from(this.faviconErrorTabIds).forEach((tabId) => {
+            if (!visibleTabIds.has(tabId)) {
+              this.faviconErrorTabIds.delete(tabId);
+            }
           });
 
           this.loading = false;
@@ -935,8 +994,10 @@ export class AppComponent implements OnInit {
       this.error = message;
       this.loading = false;
       this.sections = [];
+      this.faviconErrorTabIds.clear();
     });
   }
+
 
   private runInZone(callback: () => void): void {
     if (NgZone.isInAngularZone()) {

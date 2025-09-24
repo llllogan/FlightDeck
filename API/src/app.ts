@@ -6,6 +6,7 @@ import userRoutes from './routes/users';
 import tabGroupRoutes from './routes/tabGroups';
 import tabRoutes from './routes/tabs';
 import environmentRoutes from './routes/environments';
+import faviconRoutes from './routes/favicons';
 
 const app = express();
 
@@ -34,6 +35,7 @@ app.use('/users', userRoutes);
 app.use('/tab-groups', tabGroupRoutes);
 app.use('/tabs', tabRoutes);
 app.use('/environments', environmentRoutes);
+app.use('/favicons', faviconRoutes);
 
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   console.error(err);

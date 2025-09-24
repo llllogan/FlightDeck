@@ -22,6 +22,17 @@
   overflow-y: auto;
 }
 
+.favicon-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #e2e8f0; /* slate-200 */
+  color: #475569; /* slate-600 */
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+}
+
 .line-clamp-1 {
   display: -webkit-box;
   -webkit-line-clamp: 1;
