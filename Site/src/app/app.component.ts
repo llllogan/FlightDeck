@@ -1,4 +1,4 @@
-import { Component, DestroyRef, HostListener, OnInit } from '@angular/core';
+import { Component, DestroyRef, HostListener, NgZone, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -64,15 +64,18 @@ export class AppComponent implements OnInit {
     private readonly constsApi: ConstsApiService,
     private readonly environmentsApi: EnvironmentsApiService,
     private readonly formBuilder: FormBuilder,
+    private readonly ngZone: NgZone,
   ) {
     this.currentUser.userId$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((userId) => {
-        if (userId) {
-          this.userId = userId;
-          this.loadEnvironmentCodes();
-          this.loadWorkspace(userId);
-        }
+        this.runInZone(() => {
+          if (userId) {
+            this.userId = userId;
+            this.loadEnvironmentCodes();
+            this.loadWorkspace(userId);
+          }
+        });
       });
   }
 
@@ -222,10 +225,11 @@ export class AppComponent implements OnInit {
       .createTabGroup(this.userId, { title })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: () => {
-          this.closeAddGroupModal();
-          this.loadWorkspace(this.userId!);
-        },
+        next: () =>
+          this.runInZone(() => {
+            this.closeAddGroupModal();
+            this.loadWorkspace(this.userId!);
+          }),
         error: (err) => this.handleError('Failed to create tab group.', err),
       });
   }
@@ -307,10 +311,11 @@ export class AppComponent implements OnInit {
       .createTab(this.userId, payload)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: () => {
-          this.closeAddTabModal();
-          this.loadWorkspace(this.userId!);
-        },
+        next: () =>
+          this.runInZone(() => {
+            this.closeAddTabModal();
+            this.loadWorkspace(this.userId!);
+          }),
         error: (err) => this.handleError('Failed to create tab.', err),
       });
   }
@@ -403,68 +408,76 @@ export class AppComponent implements OnInit {
     const tabId = tabView.tab.id;
     const newTitle = (this.editTabForm.value.title as string).trim();
     const operations: Observable<unknown>[] = [];
+    const shouldDeleteTab = this.environmentControls.length === 0;
+    // If no environments remain, delete the tab entirely instead of leaving an empty shell.
 
-    if (newTitle && newTitle !== tabView.tab.title) {
+    if (!shouldDeleteTab && newTitle && newTitle !== tabView.tab.title) {
       operations.push(this.tabsApi.renameTab(this.userId, tabId, { title: newTitle }));
     }
 
     let hasValidationError = false;
 
-    this.environmentControls.controls.forEach((control) => {
-      const id = control.get('id')?.value as string | null;
-      const nameValue = (control.get('name')?.value as string | '').trim();
-      const urlValue = (control.get('url')?.value as string | '').trim();
+    if (!shouldDeleteTab) {
+      this.environmentControls.controls.forEach((control) => {
+        const id = control.get('id')?.value as string | null;
+        const nameValue = (control.get('name')?.value as string | '').trim();
+        const urlValue = (control.get('url')?.value as string | '').trim();
 
-      if (!nameValue) {
-        control.get('name')?.setErrors({ required: true });
-        hasValidationError = true;
-        return;
-      }
+        if (!nameValue) {
+          control.get('name')?.setErrors({ required: true });
+          hasValidationError = true;
+          return;
+        }
 
-      if (!urlValue) {
-        control.get('url')?.setErrors({ required: true });
-        hasValidationError = true;
-        return;
-      }
+        if (!urlValue) {
+          control.get('url')?.setErrors({ required: true });
+          hasValidationError = true;
+          return;
+        }
 
-      const normalizedUrl = this.normalizeUrl(urlValue);
-      try {
-        new URL(normalizedUrl);
-      } catch {
-        control.get('url')?.setErrors({ invalidUrl: true });
-        hasValidationError = true;
-        return;
-      }
+        const normalizedUrl = this.normalizeUrl(urlValue);
+        try {
+          new URL(normalizedUrl);
+        } catch {
+          control.get('url')?.setErrors({ invalidUrl: true });
+          hasValidationError = true;
+          return;
+        }
 
-      if (id) {
-        const original = this.originalEnvironmentMap.get(id);
-        if (!original || original.name !== nameValue || original.url !== normalizedUrl) {
+        if (id) {
+          const original = this.originalEnvironmentMap.get(id);
+          if (!original || original.name !== nameValue || original.url !== normalizedUrl) {
+            operations.push(
+              this.environmentsApi.update(this.userId!, id, {
+                name: nameValue,
+                url: normalizedUrl,
+              }),
+            );
+          }
+        } else {
           operations.push(
-            this.environmentsApi.update(this.userId!, id, {
+            this.environmentsApi.create(this.userId!, {
+              tabId,
               name: nameValue,
               url: normalizedUrl,
             }),
           );
         }
-      } else {
-        operations.push(
-          this.environmentsApi.create(this.userId!, {
-            tabId,
-            name: nameValue,
-            url: normalizedUrl,
-          }),
-        );
-      }
-    });
+      });
+    }
 
     if (hasValidationError) {
       this.environmentControls.markAllAsTouched();
       return;
     }
 
-    this.removedEnvironmentIds.forEach((envId) => {
-      operations.push(this.environmentsApi.delete(this.userId!, envId));
-    });
+    if (shouldDeleteTab) {
+      operations.push(this.tabsApi.deleteTab(this.userId!, tabId));
+    } else {
+      this.removedEnvironmentIds.forEach((envId) => {
+        operations.push(this.environmentsApi.delete(this.userId!, envId));
+      });
+    }
 
     const request$: Observable<unknown> = operations.length
       ? forkJoin(operations)
@@ -473,12 +486,13 @@ export class AppComponent implements OnInit {
     request$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: () => {
-          this.closeEditTabModal();
-          if (this.userId) {
-            this.loadWorkspace(this.userId);
-          }
-        },
+        next: () =>
+          this.runInZone(() => {
+            this.closeEditTabModal();
+            if (this.userId) {
+              this.loadWorkspace(this.userId);
+            }
+          }),
         error: (err) => this.handleError('Failed to update tab.', err),
       });
   }
@@ -504,7 +518,7 @@ export class AppComponent implements OnInit {
       .getEnvironmentCodes()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (codes) => (this.environmentCodes = codes),
+        next: (codes) => this.runInZone(() => (this.environmentCodes = codes)),
         error: (err) => console.warn('Failed to load environment codes', err),
       });
   }
@@ -524,32 +538,34 @@ export class AppComponent implements OnInit {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((workspace) => {
-        if (!workspace) {
-          return;
-        }
+        this.runInZone(() => {
+          if (!workspace) {
+            return;
+          }
 
-        this.summary = workspace.summary;
-        this.sections = workspace.tabGroups.map((group) => ({
-          group: {
-            id: group.id,
-            title: group.title,
-            createdAt: group.createdAt,
-            updatedAt: group.updatedAt,
-          },
-          tabs: group.tabs.map((tab) => ({
-            tab: {
-              id: tab.id,
-              title: tab.title,
-              createdAt: tab.createdAt,
-              updatedAt: tab.updatedAt,
+          this.summary = workspace.summary;
+          this.sections = workspace.tabGroups.map((group) => ({
+            group: {
+              id: group.id,
+              title: group.title,
+              createdAt: group.createdAt,
+              updatedAt: group.updatedAt,
             },
-            environments: tab.environments,
-            primaryEnvironment: this.getPrimaryEnvironment(tab.environments),
-          })),
-        }));
+            tabs: group.tabs.map((tab) => ({
+              tab: {
+                id: tab.id,
+                title: tab.title,
+                createdAt: tab.createdAt,
+                updatedAt: tab.updatedAt,
+              },
+              environments: tab.environments,
+              primaryEnvironment: this.getPrimaryEnvironment(tab.environments),
+            })),
+          }));
 
-        this.loading = false;
-        this.error = null;
+          this.loading = false;
+          this.error = null;
+        });
       });
   }
 
@@ -560,8 +576,18 @@ export class AppComponent implements OnInit {
 
   private handleError(message: string, err: unknown): void {
     console.error(message, err);
-    this.error = message;
-    this.loading = false;
-    this.sections = [];
+    this.runInZone(() => {
+      this.error = message;
+      this.loading = false;
+      this.sections = [];
+    });
+  }
+
+  private runInZone(callback: () => void): void {
+    if (NgZone.isInAngularZone()) {
+      callback();
+    } else {
+      this.ngZone.run(callback);
+    }
   }
 }

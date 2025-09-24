@@ -1,4 +1,5 @@
 import 'zone.js';
+import 'zone.js/plugins/zone-patch-fetch';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideHttpClient, withFetch } from '@angular/common/http';
