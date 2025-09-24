@@ -44,7 +44,7 @@ export class AppComponent implements OnInit {
   environmentCodes: string[] = [];
   loading = false;
   error: string | null = null;
-  openEnvironmentMenuForTab: string | null = null;
+  environmentMenuState: { tabId: string; top: number; left: number; width: number } | null = null;
   addGroupForm: FormGroup | null = null;
   addTabForm: FormGroup | null = null;
   activeTabSectionIndex: number | null = null;
@@ -92,17 +92,51 @@ export class AppComponent implements OnInit {
   }
 
   isEnvironmentMenuOpen(tabId: string): boolean {
-    return this.openEnvironmentMenuForTab === tabId;
+    return this.environmentMenuState?.tabId === tabId;
   }
 
   toggleEnvironmentMenu(event: MouseEvent, tabId: string): void {
     event.stopPropagation();
-    this.openEnvironmentMenuForTab = this.openEnvironmentMenuForTab === tabId ? null : tabId;
+    const target = event.currentTarget as HTMLElement | null;
+
+    if (!target) {
+      this.environmentMenuState = null;
+      return;
+    }
+
+    if (this.environmentMenuState?.tabId === tabId) {
+      this.environmentMenuState = null;
+      return;
+    }
+
+    const rect = target.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const menuWidth = Math.max(rect.width, 192);
+    let left = rect.left;
+
+    if (left + menuWidth > viewportWidth - 16) {
+      left = Math.max(16, viewportWidth - menuWidth - 16);
+    }
+
+    this.environmentMenuState = {
+      tabId,
+      top: rect.bottom + 8,
+      left,
+      width: menuWidth,
+    };
   }
 
   @HostListener('document:click')
   closeEnvironmentMenu(): void {
-    this.openEnvironmentMenuForTab = null;
+    this.environmentMenuState = null;
+  }
+
+  @HostListener('window:scroll')
+  @HostListener('window:resize')
+  dismissEnvironmentMenuOnViewportChange(): void {
+    if (this.environmentMenuState) {
+      this.environmentMenuState = null;
+    }
   }
 
   @HostListener('document:keydown.escape', ['$event'])
@@ -135,7 +169,7 @@ export class AppComponent implements OnInit {
       return;
     }
 
-    this.openEnvironmentMenuForTab = null;
+    this.environmentMenuState = null;
     this.openEnvironment(tabView.primaryEnvironment);
   }
 
@@ -163,7 +197,7 @@ export class AppComponent implements OnInit {
 
     const urlToOpen = this.normalizeForNavigation(environment.url);
     window.open(urlToOpen, '_blank', 'noopener');
-    this.openEnvironmentMenuForTab = null;
+    this.environmentMenuState = null;
   }
 
   getFavicon(url: string): string {
@@ -205,6 +239,7 @@ export class AppComponent implements OnInit {
       return;
     }
 
+    this.environmentMenuState = null;
     this.addGroupForm = this.formBuilder.group({
       title: ['', [Validators.required, Validators.maxLength(120)]],
     });
@@ -258,6 +293,7 @@ export class AppComponent implements OnInit {
       return;
     }
 
+    this.environmentMenuState = null;
     this.editingGroupContext = { sectionIndex };
     this.editGroupForm = this.formBuilder.group({
       title: [section.group.title, [Validators.required, Validators.maxLength(120)]],
@@ -346,6 +382,7 @@ export class AppComponent implements OnInit {
       .subscribe({
         next: () =>
           this.runInZone(() => {
+            this.environmentMenuState = null;
             this.editingGroupTabs = this.editingGroupTabs.filter((tab) => tab.tab.id !== tabId);
             this.loadWorkspace(this.userId!);
           }),
@@ -357,6 +394,7 @@ export class AppComponent implements OnInit {
     this.editGroupForm = null;
     this.editingGroupContext = null;
     this.editingGroupTabs = [];
+    this.environmentMenuState = null;
   }
 
   openAddTabModal(sectionIndex: number): void {
@@ -365,6 +403,7 @@ export class AppComponent implements OnInit {
       return;
     }
 
+    this.environmentMenuState = null;
     const section = this.sections[sectionIndex];
     if (!section) {
       return;
@@ -466,6 +505,7 @@ export class AppComponent implements OnInit {
     this.originalEnvironmentMap = new Map(
       tabView.environments.map((env) => [env.id, env]),
     );
+    this.environmentMenuState = null;
 
     this.editTabForm = this.formBuilder.group({
       title: [tabView.tab.title, [Validators.required, Validators.maxLength(120)]],
@@ -654,6 +694,7 @@ export class AppComponent implements OnInit {
     this.editingTabContext = null;
     this.removedEnvironmentIds.clear();
     this.originalEnvironmentMap.clear();
+    this.environmentMenuState = null;
   }
 
   get environmentControls(): FormArray<FormGroup> {

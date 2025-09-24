@@ -84,7 +84,10 @@
 
                       <div
                         *ngIf="isEnvironmentMenuOpen(tabView.tab.id)"
-                        class="environment-menu absolute bottom-full right-0 z-30 mb-2 w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-xl"
+                        class="environment-menu fixed z-40 rounded-lg border border-slate-200 bg-white py-1 shadow-xl"
+                        [style.top.px]="environmentMenuState?.top"
+                        [style.left.px]="environmentMenuState?.left"
+                        [style.width.px]="environmentMenuState?.width"
                       >
                         <button
                           *ngFor="let env of tabView.environments"
