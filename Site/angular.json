@@ -22,6 +22,22 @@
               "src/styles.css"
             ],
             "scripts": []
+          },
+          "configurations": {
+            "development": {
+              "optimization": false,
+              "sourceMap": true
+            },
+            "production": {
+              "optimization": true,
+              "outputHashing": "all",
+              "sourceMap": false,
+              "extractLicenses": true,
+              "namedChunks": false,
+              "budgets": [
+                { "type": "initial", "maximumWarning": "500kb", "maximumError": "1mb" }
+              ]
+            }
           }
         },
         "serve": {
@@ -32,6 +48,5 @@
         }
       }
     }
-  },
-  
+  }  
 }
