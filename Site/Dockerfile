@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM node:24-alpine AS build
+FROM node:24-bullseye AS build
 WORKDIR /app
 
 # Make disk-backed temp & cache dirs
