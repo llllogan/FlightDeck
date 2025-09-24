@@ -3,8 +3,8 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "start": "ng serve",
-    "build": "ng build",
+    "start": "npx http-server dist/flightdeck -p $PORT -c-1",
+    "build": "ng build --configuration production",
     "watch": "ng serve",
     "test": "ng test"
   },
