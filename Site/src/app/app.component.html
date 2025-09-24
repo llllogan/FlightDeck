@@ -137,9 +137,9 @@
   </main>
 
   <ng-container *ngIf="addGroupForm as form">
-    <div class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm px-4"
+    <div class="fixed inset-0 z-40 flex items-center justify-center overflow-y-auto bg-slate-900/50 backdrop-blur-sm px-4 py-6"
          (click)="closeAddGroupModal()">
-      <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200"
+      <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200 max-h-[calc(100vh-3rem)] overflow-y-auto"
            (click)="$event.stopPropagation()">
         <form [formGroup]="form" (ngSubmit)="submitAddGroup()" class="space-y-6">
           <header class="space-y-1">
@@ -177,9 +177,9 @@
   </ng-container>
 
   <ng-container *ngIf="addTabForm as tabForm">
-    <div class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm px-4"
+    <div class="fixed inset-0 z-40 flex items-center justify-center overflow-y-auto bg-slate-900/50 backdrop-blur-sm px-4 py-6"
          (click)="closeAddTabModal()">
-      <div class="w-full max-w-xl rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200"
+      <div class="w-full max-w-xl rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200 max-h-[calc(100vh-3rem)] overflow-y-auto"
            (click)="$event.stopPropagation()">
         <form [formGroup]="tabForm" (ngSubmit)="submitAddTab()" class="space-y-6">
           <header class="space-y-1">
@@ -252,9 +252,9 @@
   </ng-container>
 
   <ng-container *ngIf="editTabForm as editForm">
-    <div class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm px-4"
+    <div class="fixed inset-0 z-40 flex items-center justify-center overflow-y-auto bg-slate-900/50 backdrop-blur-sm px-4 py-6"
          (click)="closeEditTabModal()">
-      <div class="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200"
+      <div class="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200 max-h-[calc(100vh-3rem)] overflow-y-auto"
            (click)="$event.stopPropagation()">
         <form [formGroup]="editForm" (ngSubmit)="submitEditTab()" class="space-y-6">
           <header class="space-y-1">
@@ -346,9 +346,9 @@
   </ng-container>
 
   <ng-container *ngIf="editGroupForm as groupForm">
-    <div class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm px-4"
+    <div class="fixed inset-0 z-40 flex items-center justify-center overflow-y-auto bg-slate-900/50 backdrop-blur-sm px-4 py-6"
          (click)="closeEditGroupModal()">
-      <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200"
+      <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200 max-h-[calc(100vh-3rem)] overflow-y-auto"
            (click)="$event.stopPropagation()">
         <form [formGroup]="groupForm" (ngSubmit)="submitEditGroup()" class="space-y-6">
           <header class="space-y-1">
