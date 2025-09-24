@@ -2,10 +2,11 @@
 nixPkgs = ["nodejs_20", "npm"]
 
 [phases.install]
-cmds = ["npm ci"]
+cmds = ["cd Site && npm ci"]
 
 [phases.build]
-cmds = ["npm run build"]
+cmds = ["cd Site && npm run build"]
 
 [start]
-cmd = "npx http-server dist/flightdeck -p $PORT -c-1"
+# serve the compiled files; keep it simple
+cmd = "npx http-server Site/dist/flightdeck -p $PORT -c-1"
