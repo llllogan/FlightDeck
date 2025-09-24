@@ -5,13 +5,11 @@ COPY package*.json ./
 RUN npm ci
 COPY . .
 # if your production config is named differently, adjust:
-RUN npm run build
+RUN npm run build -- --configuration=production
 
-# --- serve ---
-FROM caddy:2.7-alpine
-# copy Angular build output. Replace "flightdeck" if your outputPath differs.
-COPY --from=build /app/dist/flightdeck /usr/share/caddy
-# minimal SPA Caddyfile
-RUN printf ':\nroot * /usr/share/caddy\nencode zstd gzip\nfile_server\ntry_files {path} {path}/ /index.html\n' > /etc/caddy/Caddyfile
-EXPOSE 80
-CMD ["caddy","run","--config","/etc/caddy/Caddyfile","--adapter","caddyfile"]
+# Stage 2: serve static files
+FROM nginx:alpine
+# Angular outputs to dist/<project-name>; adjust path accordingly
+COPY --from=build /app/dist/<project-name> /usr/share/nginx/html
+# Optional: custom nginx conf (gzip, cache headers)
+# COPY nginx.conf /etc/nginx/conf.d/default.conf

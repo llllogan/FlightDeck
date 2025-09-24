@@ -1,0 +1,9 @@
+services:
+  web:
+    build: .
+    container_name: angular-static
+    # Publish container port 80 to host port 8080 (choose any free host port)
+    ports:
+      - "8080:80"
+    # No traefik/caddy labels; no domain set in Coolify
+    restart: unless-stopped
