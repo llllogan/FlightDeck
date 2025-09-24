@@ -1,4 +1,4 @@
-import { Component, DestroyRef, OnInit } from '@angular/core';
+import { Component, DestroyRef, HostListener, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { of } from 'rxjs';
@@ -42,6 +42,7 @@ export class AppComponent implements OnInit {
   environmentCodes: string[] = [];
   loading = false;
   error: string | null = null;
+  openEnvironmentMenuForTab: string | null = null;
 
   private userId: string | null = null;
 
@@ -73,6 +74,56 @@ export class AppComponent implements OnInit {
       });
   }
 
+  isEnvironmentMenuOpen(tabId: string): boolean {
+    return this.openEnvironmentMenuForTab === tabId;
+  }
+
+  toggleEnvironmentMenu(event: MouseEvent, tabId: string): void {
+    event.stopPropagation();
+    this.openEnvironmentMenuForTab = this.openEnvironmentMenuForTab === tabId ? null : tabId;
+  }
+
+  @HostListener('document:click')
+  closeEnvironmentMenu(): void {
+    this.openEnvironmentMenuForTab = null;
+  }
+
+  launchPrimaryEnvironment(tabView: TabViewModel): void {
+    if (!this.canLaunch(tabView)) {
+      return;
+    }
+
+    this.openEnvironmentMenuForTab = null;
+    this.openEnvironment(tabView.primaryEnvironment);
+  }
+
+  onCardKeydown(event: Event, tabView: TabViewModel): void {
+    if (!(event instanceof KeyboardEvent)) {
+      return;
+    }
+
+    if (!this.canLaunch(tabView)) {
+      return;
+    }
+
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      this.launchPrimaryEnvironment(tabView);
+    }
+  }
+
+  openEnvironment(environment?: Environment, event?: MouseEvent): void {
+    event?.stopPropagation();
+
+    if (!environment?.url) {
+      return;
+    }
+
+    const urlToOpen = this.normalizeForNavigation(environment.url);
+    window.open(urlToOpen, '_blank', 'noopener');
+    this.openEnvironmentMenuForTab = null;
+  }
+
   getFavicon(url: string): string {
     try {
       const u = new URL(url);
@@ -91,6 +142,19 @@ export class AppComponent implements OnInit {
       return trimmed;
     }
     return `https://${trimmed}`;
+  }
+
+  private normalizeForNavigation(url: string): string {
+    try {
+      new URL(url);
+      return url;
+    } catch {
+      return this.normalizeUrl(url);
+    }
+  }
+
+  canLaunch(tabView: TabViewModel): boolean {
+    return Boolean(tabView.primaryEnvironment?.url);
   }
 
   addSection(): void {
@@ -223,13 +287,18 @@ export class AppComponent implements OnInit {
               updatedAt: tab.updatedAt,
             },
             environments: tab.environments,
-            primaryEnvironment: tab.environments[0],
+            primaryEnvironment: this.getPrimaryEnvironment(tab.environments),
           })),
         }));
 
         this.loading = false;
         this.error = null;
       });
+  }
+
+  private getPrimaryEnvironment(environments: Environment[]): Environment | undefined {
+    const prd = environments.find((env) => env.name.toLowerCase() === 'prd');
+    return prd ?? environments[0];
   }
 
   private handleError(message: string, err: unknown): void {
