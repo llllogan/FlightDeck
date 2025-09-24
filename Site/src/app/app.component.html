@@ -6,7 +6,6 @@
         <ng-container *ngIf="summary as s; else tagline">
           <span class="mr-3">{{ s.tabGroupCount }} tab groups</span>
           <span class="mr-3">{{ s.tabCount }} tabs</span>
-          <span>{{ s.environmentCount }} environments</span>
         </ng-container>
         <ng-template #tagline>Launch your workspace</ng-template>
       </div>
@@ -293,6 +292,15 @@
                        formControlName="name"
                        autocomplete="off"
                        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200" />
+                <div class="flex flex-wrap gap-2 text-xs"
+                     *ngIf="!((envGroup.get('name')?.value || '').trim())">
+                  <button type="button"
+                          *ngFor="let code of environmentCodes"
+                          class="rounded-full border border-slate-200 px-2 py-1 text-slate-600 hover:border-slate-300 hover:text-slate-800"
+                          (click)="envGroup.get('name')?.setValue(code)">
+                    {{ code }}
+                  </button>
+                </div>
                 <div class="text-xs text-red-500" *ngIf="envGroup.get('name')?.invalid && envGroup.get('name')?.touched">
                   Name is required.
                 </div>
