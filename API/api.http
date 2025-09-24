@@ -2,6 +2,8 @@
 @tabGroupId = c6f14643-9861-11f0-ba26-0242ac120003
 @tabId = 20ff62f3-9869-11f0-ba26-0242ac120003
 
+@hamish=c7f4f096-9930-11f0-ba26-0242ac120003
+
 ### Health Check
 GET http://localhost:3000/health
 Accept: application/json
@@ -16,7 +18,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "name": "Logan"
+  "name": "Hamish"
 }
 
 ### Delete User
