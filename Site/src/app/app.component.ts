@@ -1,8 +1,8 @@
 import { Component, DestroyRef, HostListener, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { of } from 'rxjs';
+import { forkJoin, Observable, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
 import {
@@ -17,6 +17,7 @@ import { CurrentUserService } from './services/current-user.service';
 import { UsersApiService } from './services/users-api.service';
 import { TabGroupsApiService } from './services/tab-groups-api.service';
 import { TabsApiService } from './services/tabs-api.service';
+import { EnvironmentsApiService } from './services/environments-api.service';
 import { ConstsApiService } from './services/consts-api.service';
 
 interface TabViewModel {
@@ -47,6 +48,10 @@ export class AppComponent implements OnInit {
   addGroupForm: FormGroup | null = null;
   addTabForm: FormGroup | null = null;
   activeTabSectionIndex: number | null = null;
+  editTabForm: FormGroup | null = null;
+  editingTabContext: { sectionIndex: number; tabIndex: number } | null = null;
+  removedEnvironmentIds: Set<string> = new Set();
+  originalEnvironmentMap: Map<string, Environment> = new Map();
 
   private userId: string | null = null;
 
@@ -57,6 +62,7 @@ export class AppComponent implements OnInit {
     private readonly tabGroupsApi: TabGroupsApiService,
     private readonly tabsApi: TabsApiService,
     private readonly constsApi: ConstsApiService,
+    private readonly environmentsApi: EnvironmentsApiService,
     private readonly formBuilder: FormBuilder,
   ) {
     this.currentUser.userId$
@@ -102,6 +108,10 @@ export class AppComponent implements OnInit {
     }
     if (this.addTabForm) {
       this.closeAddTabModal();
+      closed = true;
+    }
+    if (this.editTabForm) {
+      this.closeEditTabModal();
       closed = true;
     }
 
@@ -308,6 +318,181 @@ export class AppComponent implements OnInit {
   closeAddTabModal(): void {
     this.addTabForm = null;
     this.activeTabSectionIndex = null;
+  }
+
+  openEditTabModal(sectionIndex: number, tabIndex: number, event?: MouseEvent): void {
+    event?.stopPropagation();
+
+    if (!this.userId) {
+      this.handleError('User context unavailable.', null);
+      return;
+    }
+
+    const section = this.sections[sectionIndex];
+    const tabView = section?.tabs?.[tabIndex];
+
+    if (!section || !tabView) {
+      return;
+    }
+
+    this.editingTabContext = { sectionIndex, tabIndex };
+    this.removedEnvironmentIds = new Set();
+    this.originalEnvironmentMap = new Map(
+      tabView.environments.map((env) => [env.id, env]),
+    );
+
+    this.editTabForm = this.formBuilder.group({
+      title: [tabView.tab.title, [Validators.required, Validators.maxLength(120)]],
+      environments: this.formBuilder.array(
+        tabView.environments.map((env) =>
+          this.formBuilder.group({
+            id: [env.id],
+            name: [env.name, [Validators.required, Validators.maxLength(60)]],
+            url: [env.url, [Validators.required, Validators.maxLength(2048)]],
+          }),
+        ),
+      ),
+    });
+  }
+
+  addEnvironmentRow(): void {
+    if (!this.editTabForm) {
+      return;
+    }
+
+    this.environmentControls.push(
+      this.formBuilder.group({
+        id: [null],
+        name: ['', [Validators.required, Validators.maxLength(60)]],
+        url: ['', [Validators.required, Validators.maxLength(2048)]],
+      }),
+    );
+  }
+
+  removeEnvironmentRow(index: number): void {
+    if (!this.editTabForm) {
+      return;
+    }
+
+    const control = this.environmentControls.at(index);
+    const id = control.get('id')?.value as string | null;
+    if (id) {
+      this.removedEnvironmentIds.add(id);
+    }
+    this.environmentControls.removeAt(index);
+  }
+
+  submitEditTab(): void {
+    if (!this.userId || !this.editTabForm || !this.editingTabContext) {
+      return;
+    }
+
+    if (this.editTabForm.invalid) {
+      this.editTabForm.markAllAsTouched();
+      return;
+    }
+
+    const { sectionIndex, tabIndex } = this.editingTabContext;
+    const section = this.sections[sectionIndex];
+    const tabView = section?.tabs?.[tabIndex];
+
+    if (!section || !tabView) {
+      return;
+    }
+
+    const tabId = tabView.tab.id;
+    const newTitle = (this.editTabForm.value.title as string).trim();
+    const operations: Observable<unknown>[] = [];
+
+    if (newTitle && newTitle !== tabView.tab.title) {
+      operations.push(this.tabsApi.renameTab(this.userId, tabId, { title: newTitle }));
+    }
+
+    let hasValidationError = false;
+
+    this.environmentControls.controls.forEach((control) => {
+      const id = control.get('id')?.value as string | null;
+      const nameValue = (control.get('name')?.value as string | '').trim();
+      const urlValue = (control.get('url')?.value as string | '').trim();
+
+      if (!nameValue) {
+        control.get('name')?.setErrors({ required: true });
+        hasValidationError = true;
+        return;
+      }
+
+      if (!urlValue) {
+        control.get('url')?.setErrors({ required: true });
+        hasValidationError = true;
+        return;
+      }
+
+      const normalizedUrl = this.normalizeUrl(urlValue);
+      try {
+        new URL(normalizedUrl);
+      } catch {
+        control.get('url')?.setErrors({ invalidUrl: true });
+        hasValidationError = true;
+        return;
+      }
+
+      if (id) {
+        const original = this.originalEnvironmentMap.get(id);
+        if (!original || original.name !== nameValue || original.url !== normalizedUrl) {
+          operations.push(
+            this.environmentsApi.update(this.userId!, id, {
+              name: nameValue,
+              url: normalizedUrl,
+            }),
+          );
+        }
+      } else {
+        operations.push(
+          this.environmentsApi.create(this.userId!, {
+            tabId,
+            name: nameValue,
+            url: normalizedUrl,
+          }),
+        );
+      }
+    });
+
+    if (hasValidationError) {
+      this.environmentControls.markAllAsTouched();
+      return;
+    }
+
+    this.removedEnvironmentIds.forEach((envId) => {
+      operations.push(this.environmentsApi.delete(this.userId!, envId));
+    });
+
+    const request$: Observable<unknown> = operations.length
+      ? forkJoin(operations)
+      : of(null);
+
+    request$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.closeEditTabModal();
+          if (this.userId) {
+            this.loadWorkspace(this.userId);
+          }
+        },
+        error: (err) => this.handleError('Failed to update tab.', err),
+      });
+  }
+
+  closeEditTabModal(): void {
+    this.editTabForm = null;
+    this.editingTabContext = null;
+    this.removedEnvironmentIds.clear();
+    this.originalEnvironmentMap.clear();
+  }
+
+  get environmentControls(): FormArray<FormGroup> {
+    const controls = this.editTabForm?.get('environments') as FormArray<FormGroup> | undefined;
+    return (controls ?? this.formBuilder.array([])) as unknown as FormArray<FormGroup>;
   }
 
   private loadEnvironmentCodes(): void {
