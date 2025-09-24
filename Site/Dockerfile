@@ -1,23 +1,18 @@
-# syntax=docker/dockerfile:1.7   # enables RUN --mount=cache (BuildKit)
-# --- build ---
+# syntax=docker/dockerfile:1.7
+
 FROM node:24-alpine AS build
 WORKDIR /app
 
-# Ensure npm temp and cache go to disk-backed paths (not /tmp tmpfs)
+# Make disk-backed temp & cache dirs
 ENV TMPDIR=/app/.tmp
-RUN mkdir -p /app/.tmp
+ENV npm_config_cache=/app/.npm
+RUN mkdir -p /app/.tmp /app/.npm
 
-# Install deps using a reusable cache mount (doesn't bloat image layers)
 COPY package*.json ./
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci --no-audit --no-fund
 
-# Build Angular
+# Use BuildKit cache mount at the SAME path npm uses
+RUN --mount=type=cache,target=/app/.npm \
+    npm ci --no-audit --no-fund --prefer-offline --omit=optional
+
 COPY . .
-# Adjust configuration name if you use something else
 RUN npm run build -- --configuration=production
-
-# --- serve ---
-FROM nginx:alpine
-# Copy the compiled Angular app (confirm 'flightdeck' matches your dist dir name)
-COPY --from=build /app/dist/flightdeck /usr/share/nginx/html
