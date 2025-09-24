@@ -2,7 +2,7 @@
 FROM node:24-alpine AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --cache=/app/.npm --prefer-offline
 COPY . .
 # if your production config is named differently, adjust:
 RUN npm run build -- --configuration=production
