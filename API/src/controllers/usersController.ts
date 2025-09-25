@@ -3,6 +3,7 @@ import { callStoredProcedure, querySingle } from '../db/helpers';
 import type { CreateUserRequest } from '../models/requestBodies';
 import type { UserRecord } from '../db/resourceAccess';
 import {
+  listUsers as listUsersFromDb,
   listTabGroupsForUser,
   listTabsForTabGroup,
   listEnvironmentsForTab,
@@ -37,7 +38,19 @@ type SummaryResponse = Response<SerializedUserSummary | { error: string }>;
 
 type TabGroupsResponse = Response<SerializedTabGroup[] | { error: string }>;
 
-type StandardResponse = Response<Record<string, unknown>>;
+type StandardResponse = Response<UserRecord | Record<string, unknown>>;
+
+type UsersResponse = Response<UserRecord[] | { error: string }>;
+
+async function listUsers(_req: EmptyRequest, res: UsersResponse): Promise<void> {
+  try {
+    const users = await listUsersFromDb();
+    res.json(users);
+  } catch (error) {
+    console.error('Failed to list users', error);
+    res.status(500).json({ error: 'Failed to list users' });
+  }
+}
 
 async function createUser(req: CreateUserRequestHandler, res: StandardResponse): Promise<void> {
   const { name } = req.body;
@@ -194,4 +207,4 @@ async function getUserWorkspace(req: EmptyRequest, res: WorkspaceResponse): Prom
   }
 }
 
-export { createUser, deleteUser, getUserSummary, getUserTabGroups, getUserWorkspace };
+export { listUsers, createUser, deleteUser, getUserSummary, getUserTabGroups, getUserWorkspace };

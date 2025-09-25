@@ -11,8 +11,7 @@ RUN mkdir -p /app/.tmp /app/.npm
 COPY package*.json ./
 
 # Use BuildKit cache mount at the SAME path npm uses
-RUN --mount=type=cache,target=/app/.npm \
-    npm ci --no-audit --no-fund --prefer-offline --omit=optional
+RUN npm ci
 
 COPY . .
 RUN npm run build -- --configuration=production

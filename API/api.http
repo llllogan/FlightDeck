@@ -12,13 +12,17 @@ Accept: application/json
 GET http://localhost:3000/consts/environments
 Accept: application/json
 
+### List Users
+GET http://localhost:3000/users
+Accept: application/json
+
 ### Create User
 POST http://localhost:3000/users
 Content-Type: application/json
 Accept: application/json
 
 {
-  "name": "Hamish"
+  "name": "Logan"
 }
 
 ### Delete User

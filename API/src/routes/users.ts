@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import {
+  listUsers,
   createUser,
   deleteUser,
   getUserSummary,
@@ -10,6 +11,7 @@ import { requireUserId } from '../middleware/userContext';
 
 const router = Router();
 
+router.get('/', listUsers);
 router.post('/', createUser);
 router.use(requireUserId);
 router.delete('/', deleteUser);

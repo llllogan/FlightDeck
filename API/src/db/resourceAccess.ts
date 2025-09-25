@@ -56,6 +56,12 @@ export async function getUserById(userId: string): Promise<UserRecord | undefine
   return querySingle<UserRecord>('SELECT id, name, createdAt, updatedAt FROM users WHERE id = ?', [userId]);
 }
 
+export async function listUsers(): Promise<UserRecord[]> {
+  return queryAll<UserRecord>(
+    'SELECT id, name, createdAt, updatedAt FROM users ORDER BY createdAt ASC',
+  );
+}
+
 export async function getTabGroupById(tabGroupId: string): Promise<UserTabGroupViewRow | undefined> {
   return querySingle<UserTabGroupViewRow>(
     'SELECT * FROM user_tabgroups_view WHERE tabGroupId = ?',
