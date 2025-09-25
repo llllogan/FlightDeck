@@ -20,9 +20,11 @@ RUN npm run build -- --configuration=production
 
 # ----- runtime -----
 FROM nginx:alpine AS runtime
-# adjust if your Angular output dir differs
-COPY --from=build /app/dist/flightdeck /usr/share/nginx/html
-# SPA fallback + sensible cache headers
+
+# put the Angular files directly into the html root
+COPY --from=build /app/dist/flightdeck/browser/ /usr/share/nginx/html/
+
+# keep SPA fallback
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
