@@ -1,11 +1,8 @@
 node_modules
 dist
 .git
-.gitignore
 *.log
-npm-debug.log*
-.yarn-cache
-.cache
-.tmp
 Dockerfile*
 docker-compose*
+.tmp
+.cache
