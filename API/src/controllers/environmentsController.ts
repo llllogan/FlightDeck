@@ -158,6 +158,12 @@ async function updateEnvironment(req: UpdateRequest, res: Response): Promise<voi
 
     await callStoredProcedure('update_environment', [environmentId, sanitizedName, sanitizedUrl]);
     const updated = await getEnvironmentById(environmentId);
+
+    if (!updated) {
+      res.status(500).json({ error: 'Failed to load updated environment' });
+      return;
+    }
+
     res.json(serializeEnvironment(updated));
   } catch (error) {
     console.error('Failed to update environment', error);

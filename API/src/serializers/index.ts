@@ -1,3 +1,4 @@
+import type { RowDataPacket } from 'mysql2/promise';
 import type {
   EnvironmentDetailViewRow,
   TabDetailViewRow,
@@ -5,7 +6,7 @@ import type {
   UserTabGroupViewRow,
 } from '../db/resourceAccess';
 
-export interface UserSummaryRow {
+export interface UserSummaryRow extends RowDataPacket {
   userId: string;
   userName: string;
   tabGroupCount: number;

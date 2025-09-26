@@ -135,6 +135,12 @@ async function renameTab(req: RenameRequest, res: Response): Promise<void> {
 
     await callStoredProcedure('rename_tab', [tabId, title.trim()]);
     const updated = await getTabById(tabId);
+
+    if (!updated) {
+      res.status(500).json({ error: 'Failed to load updated tab' });
+      return;
+    }
+
     res.json(serializeTab(updated));
   } catch (error) {
     console.error('Failed to rename tab', error);

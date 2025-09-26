@@ -1,13 +1,14 @@
+import type { RowDataPacket } from 'mysql2/promise';
 import { queryAll, querySingle } from './helpers';
 
-export interface UserRecord {
+export interface UserRecord extends RowDataPacket {
   id: string;
   name: string;
   createdAt: Date;
   updatedAt: Date;
 }
 
-export interface UserTabGroupViewRow {
+export interface UserTabGroupViewRow extends RowDataPacket {
   userId: string;
   userName: string;
   tabGroupId: string | null;
@@ -17,7 +18,7 @@ export interface UserTabGroupViewRow {
   tabGroupUpdatedAt: Date | null;
 }
 
-export interface TabDetailViewRow {
+export interface TabDetailViewRow extends RowDataPacket {
   tabId: string;
   tabTitle: string;
   tabSortOrder: number;
@@ -29,7 +30,7 @@ export interface TabDetailViewRow {
   userName: string;
 }
 
-export interface EnvironmentDetailViewRow {
+export interface EnvironmentDetailViewRow extends RowDataPacket {
   environmentId: string;
   environmentName: string;
   environmentUrl: string;
@@ -43,7 +44,7 @@ export interface EnvironmentDetailViewRow {
   userName: string;
 }
 
-export interface TabGroupSummaryRow {
+export interface TabGroupSummaryRow extends RowDataPacket {
   tabGroupId: string;
   tabGroupTitle: string;
   userId: string;

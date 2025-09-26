@@ -1,17 +1,11 @@
-import type { OkPacket, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
+import type { OkPacket, ResultSetHeader, RowDataPacket } from "mysql2/promise";
 import { getPool } from './pool';
 
 type QueryParam = string | number | boolean | null;
 
-type ProcedureResult<T> =
-  | RowDataPacket[][]
-  | RowDataPacket[]
-  | OkPacket
-  | OkPacket[]
-  | ResultSetHeader
-  | T;
+type QueryResult = RowDataPacket[][] | RowDataPacket[] | OkPacket | OkPacket[] | ResultSetHeader;
 
-export async function callStoredProcedure<T = ProcedureResult<RowDataPacket[][]>>(
+export async function callStoredProcedure<T extends QueryResult = RowDataPacket[][]>(
   procedureName: string,
   params: QueryParam[] = [],
 ): Promise<T> {
@@ -22,13 +16,19 @@ export async function callStoredProcedure<T = ProcedureResult<RowDataPacket[][]>
   return rows;
 }
 
-export async function querySingle<T = RowDataPacket>(sql: string, params: QueryParam[] = []): Promise<T | undefined> {
+export async function querySingle<T extends RowDataPacket = RowDataPacket>(
+  sql: string,
+  params: QueryParam[] = [],
+): Promise<T | undefined> {
   const pool = getPool();
   const [rows] = await pool.query<T[]>(sql, params);
   return rows[0];
 }
 
-export async function queryAll<T = RowDataPacket>(sql: string, params: QueryParam[] = []): Promise<T[]> {
+export async function queryAll<T extends RowDataPacket = RowDataPacket>(
+  sql: string,
+  params: QueryParam[] = [],
+): Promise<T[]> {
   const pool = getPool();
   const [rows] = await pool.query<T[]>(sql, params);
   return rows;
