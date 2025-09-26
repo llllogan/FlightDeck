@@ -14,8 +14,8 @@ mkdir -p "$(dirname "$env_file_path")"
 
 api_base_url=${API_BASE_URL:-http://localhost:3000}
 
-escaped_api_base_url=${api_base_url//\/\\}
-escaped_api_base_url=${escaped_api_base_url//"/\"}
+escaped_api_base_url=${api_base_url//\\/\\\\}
+escaped_api_base_url=${escaped_api_base_url//\"/\\\"}
 
 cat > "$env_file_path" <<EOF
 (function (window) {
@@ -44,3 +44,4 @@ if [ "$#" -gt 0 ]; then
 else
   default_cmd
 fi
+
