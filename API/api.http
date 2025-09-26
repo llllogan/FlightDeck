@@ -4,20 +4,22 @@
 
 @hamish=c7f4f096-9930-11f0-ba26-0242ac120003
 
+@host = 10.10.20.3:80
+
 ### Health Check
-GET http://localhost:3000/health
+GET http://{{host}}/health
 Accept: application/json
 
 ### List Constants
-GET http://localhost:3000/consts/environments
+GET http://{{host}}/consts/environments
 Accept: application/json
 
 ### List Users
-GET http://localhost:3000/users
+GET http://{{host}}/users
 Accept: application/json
 
 ### Create User
-POST http://localhost:3000/users
+POST http://{{host}}/users
 Content-Type: application/json
 Accept: application/json
 
@@ -26,27 +28,27 @@ Accept: application/json
 }
 
 ### Delete User
-DELETE http://localhost:3000/users
+DELETE http://{{host}}/users
 Accept: application/json
 user_id: {{userId}}
 
 ### Get User Tab Groups
-GET http://localhost:3000/users/tab-groups
+GET http://{{host}}/users/tab-groups
 Accept: application/json
 user_id: {{userId}}
 
 ### Get User Summary
-GET http://localhost:3000/users/summary
+GET http://{{host}}/users/summary
 Accept: application/json
 user_id: {{userId}}
 
 ### Get Workspace
-GET http://localhost:3000/users/workspace
+GET http://{{host}}/users/workspace
 Accept: application/json
 user_id: {{userId}}
 
 ### Create Tab Group
-POST http://localhost:3000/tab-groups
+POST http://{{host}}/tab-groups
 Content-Type: application/json
 Accept: application/json
 user_id: {{userId}}
@@ -56,7 +58,7 @@ user_id: {{userId}}
 }
 
 ### Rename Tab Group
-PATCH http://localhost:3000/tab-groups/{{tabGroupId}}
+PATCH http://{{host}}/tab-groups/{{tabGroupId}}
 Content-Type: application/json
 Accept: application/json
 user_id: {{userId}}
@@ -66,22 +68,22 @@ user_id: {{userId}}
 }
 
 ### Delete Tab Group
-DELETE http://localhost:3000/tab-groups/{{tabGroupId}}
+DELETE http://{{host}}/tab-groups/{{tabGroupId}}
 Accept: application/json
 user_id: {{userId}}
 
 ### Get Tab Group Summary
-GET http://localhost:3000/tab-groups/summary
+GET http://{{host}}/tab-groups/summary
 Accept: application/json
 user_id: {{userId}}
 
 ### Get Tabs For Tab Group
-GET http://localhost:3000/tab-groups/{{tabGroupId}}/tabs
+GET http://{{host}}/tab-groups/{{tabGroupId}}/tabs
 Accept: application/json
 user_id: {{userId}}
 
 ### Create Tab
-POST http://localhost:3000/tabs
+POST http://{{host}}/tabs
 Content-Type: application/json
 Accept: application/json
 user_id: {{userId}}
@@ -96,7 +98,7 @@ user_id: {{userId}}
 }
 
 ### Rename Tab
-PATCH http://localhost:3000/tabs/{{tabId}}
+PATCH http://{{host}}/tabs/{{tabId}}
 Content-Type: application/json
 Accept: application/json
 user_id: {{userId}}
@@ -106,12 +108,12 @@ user_id: {{userId}}
 }
 
 ### Delete Tab
-DELETE http://localhost:3000/tabs/{{tabId}}
+DELETE http://{{host}}/tabs/{{tabId}}
 Accept: application/json
 user_id: {{userId}}
 
 ### Create Environment
-POST http://localhost:3000/environments
+POST http://{{host}}/environments
 Content-Type: application/json
 Accept: application/json
 user_id: {{userId}}
@@ -123,7 +125,7 @@ user_id: {{userId}}
 }
 
 ### Update Environment
-PATCH http://localhost:3000/environments/{{environmentId}}
+PATCH http://{{host}}/environments/{{environmentId}}
 Content-Type: application/json
 Accept: application/json
 user_id: {{userId}}
@@ -134,11 +136,11 @@ user_id: {{userId}}
 }
 
 ### Delete Environment
-DELETE http://localhost:3000/environments/{{environmentId}}
+DELETE http://{{host}}/environments/{{environmentId}}
 Accept: application/json
 user_id: {{userId}}
 
 ### List Environments For Tab
-GET http://localhost:3000/environments/tabs/{{tabId}}
+GET http://{{host}}/environments/tabs/{{tabId}}
 Accept: application/json
 user_id: {{userId}}

@@ -6,13 +6,14 @@ import { initDatabase, closePool } from './db/pool';
 dotenv.config();
 
 const port = process.env.PORT ? Number(process.env.PORT) : 80;
+const host = process.env.HOST || '0.0.0.0';
 let server: http.Server | undefined;
 
 export async function start(): Promise<void> {
   await initDatabase();
 
-  server = app.listen(port, () => {
-    console.log(`Server listening on port ${port}`);
+  server = app.listen(port, host, () => {
+    console.log(`Server listening on http://${host}:${port}`);
   });
 
   const shutdownSignals: NodeJS.Signals[] = ['SIGINT', 'SIGTERM'];
