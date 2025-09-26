@@ -2,7 +2,7 @@ name: Trigger Coolify Site Deploy
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "master" ]
   workflow_dispatch:
 
 jobs:
