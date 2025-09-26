@@ -1,34 +1,46 @@
 #!/bin/sh
 set -euo pipefail
 
-APP_DIST_DIR=${APP_DIST_DIR:-/app/dist/flightdeck}
-ENV_FILE_PATH="${APP_DIST_DIR}/assets/env.js"
+if [ -n "${APP_DIST_DIR:-}" ]; then
+  dist_dir="$APP_DIST_DIR"
+elif [ -d /usr/share/nginx/html ]; then
+  dist_dir="/usr/share/nginx/html"
+else
+  dist_dir="/app/dist/flightdeck"
+fi
 
-mkdir -p "$(dirname "$ENV_FILE_PATH")"
+env_file_path=${ENV_FILE_PATH:-"${dist_dir}/assets/env.js"}
+mkdir -p "$(dirname "$env_file_path")"
 
-API_BASE_URL=${API_BASE_URL:-http://localhost:3000}
+api_base_url=${API_BASE_URL:-http://localhost:3000}
 
-export ENV_FILE_PATH
-export API_BASE_URL
+escaped_api_base_url=${api_base_url//\/\\}
+escaped_api_base_url=${escaped_api_base_url//"/\"}
 
-node <<'NODE'
-const fs = require('fs');
-const path = process.env.ENV_FILE_PATH;
-const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:3000';
+cat > "$env_file_path" <<EOF
+(function (window) {
+  window.__env = window.__env || {};
+  window.__env.apiBaseUrl = "${escaped_api_base_url}";
+})(window);
+EOF
 
-function escapeJsString(value) {
-  return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+echo "[FlightDeck] Wrote runtime env overrides to $env_file_path"
+echo "[FlightDeck] API_BASE_URL=${api_base_url}"
+
+default_cmd() {
+  if command -v nginx >/dev/null 2>&1; then
+    exec nginx -g 'daemon off;'
+  elif command -v http-server >/dev/null 2>&1; then
+    port=${PORT:-80}
+    exec http-server "$dist_dir" -p "$port" -c-1 --gzip
+  else
+    echo "No web server binary found. Exiting." >&2
+    exit 1
+  fi
 }
 
-const content = `(function (window) {
-  window.__env = window.__env || {};
-  window.__env.apiBaseUrl = '${escapeJsString(apiBaseUrl)}';
-})(window);
-`;
-
-fs.writeFileSync(path, content, { encoding: 'utf-8' });
-NODE
-
-PORT=${PORT:-80}
-
-exec http-server "$APP_DIST_DIR" -p "$PORT" -c-1 --gzip
+if [ "$#" -gt 0 ]; then
+  exec "$@"
+else
+  default_cmd
+fi
