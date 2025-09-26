@@ -5,7 +5,7 @@ import { initDatabase, closePool } from './db/pool';
 
 dotenv.config();
 
-const port = process.env.PORT ? Number(process.env.PORT) : 3000;
+const port = process.env.PORT ? Number(process.env.PORT) : 80;
 let server: http.Server | undefined;
 
 export async function start(): Promise<void> {
