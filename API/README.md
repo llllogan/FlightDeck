@@ -8,4 +8,4 @@ A starter Express API configured to connect to a MySQL database.
 2. Install dependencies with `npm install`.
 3. Start the server with `npm start`.
 
-The server exposes a `/health` endpoint that checks the MySQL connection.
+All API routes are namespaced under `/api`, including the `/api/health` endpoint that checks the MySQL connection.

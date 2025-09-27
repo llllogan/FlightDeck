@@ -9,6 +9,7 @@ import environmentRoutes from './routes/environments';
 import faviconRoutes from './routes/favicons';
 
 const app = express();
+const apiRouter = express.Router();
 
 const defaultOrigins = ['http://localhost:4200'];
 const configuredOrigins = process.env.CORS_ORIGIN
@@ -25,17 +26,19 @@ app.set('etag', false);
 app.use(cors(corsOptions));
 app.use(express.json());
 
-app.get('/', (_req: Request, res: Response) => {
+apiRouter.get('/', (_req: Request, res: Response) => {
   res.send('Welcome to the FlightDeck API!');
 });
 
-app.use('/health', healthRoutes);
-app.use('/consts', constsRoutes);
-app.use('/users', userRoutes);
-app.use('/tab-groups', tabGroupRoutes);
-app.use('/tabs', tabRoutes);
-app.use('/environments', environmentRoutes);
-app.use('/favicons', faviconRoutes);
+apiRouter.use('/health', healthRoutes);
+apiRouter.use('/consts', constsRoutes);
+apiRouter.use('/users', userRoutes);
+apiRouter.use('/tab-groups', tabGroupRoutes);
+apiRouter.use('/tabs', tabRoutes);
+apiRouter.use('/environments', environmentRoutes);
+apiRouter.use('/favicons', faviconRoutes);
+
+app.use('/api', apiRouter);
 
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   console.error(err);
