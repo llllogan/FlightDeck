@@ -4,7 +4,8 @@
 
 @hamish=c7f4f096-9930-11f0-ba26-0242ac120003
 
-@host = flightdeck.site/api
+# @host = flightdeck.site/api
+@host = localhost:3000/api
 
 ### Health Check
 GET http://{{host}}/health
