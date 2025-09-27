@@ -11,7 +11,7 @@ import faviconRoutes from './routes/favicons';
 const app = express();
 const apiRouter = express.Router();
 
-const defaultOrigins = ['http://localhost:4200'];
+const defaultOrigins = ['http://localhost:4200', 'http://flightdeck.site', 'https://flightdeck.site'];
 const configuredOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map((origin) => origin.trim()).filter(Boolean)
   : defaultOrigins;
