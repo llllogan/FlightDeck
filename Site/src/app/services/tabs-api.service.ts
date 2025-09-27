@@ -45,6 +45,6 @@ export class TabsApiService {
   }
 
   private userHeaders(userId: string): HttpHeaders {
-    return new HttpHeaders({ 'user_id': userId });
+    return new HttpHeaders({ 'x-user-id': userId });
   }
 }

@@ -35,6 +35,6 @@ export class EnvironmentsApiService {
   }
 
   private userHeaders(userId: string): HttpHeaders {
-    return new HttpHeaders({ 'user_id': userId });
+    return new HttpHeaders({ 'x-user-id': userId });
   }
 }

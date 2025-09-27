@@ -31,28 +31,28 @@ Accept: application/json
 ### Delete User
 DELETE http://{{host}}/users
 Accept: application/json
-user_id: {{userId}}
+x-user-id: {{userId}}
 
 ### Get User Tab Groups
 GET http://{{host}}/users/tab-groups
 Accept: application/json
-user_id: {{userId}}
+x-user-id: {{userId}}
 
 ### Get User Summary
 GET http://{{host}}/users/summary
 Accept: application/json
-user_id: {{userId}}
+x-user-id: {{userId}}
 
 ### Get Workspace
 GET http://{{host}}/users/workspace
 Accept: application/json
-user_id: {{userId}}
+x-user-id: {{userId}}
 
 ### Create Tab Group
 POST http://{{host}}/tab-groups
 Content-Type: application/json
 Accept: application/json
-user_id: {{userId}}
+x-user-id: {{userId}}
 
 {
   "title": "Connectwise"
@@ -62,7 +62,7 @@ user_id: {{userId}}
 PATCH http://{{host}}/tab-groups/{{tabGroupId}}
 Content-Type: application/json
 Accept: application/json
-user_id: {{userId}}
+x-user-id: {{userId}}
 
 {
   "title": "Updated Tab Group"
@@ -71,23 +71,23 @@ user_id: {{userId}}
 ### Delete Tab Group
 DELETE http://{{host}}/tab-groups/{{tabGroupId}}
 Accept: application/json
-user_id: {{userId}}
+x-user-id: {{userId}}
 
 ### Get Tab Group Summary
 GET http://{{host}}/tab-groups/summary
 Accept: application/json
-user_id: {{userId}}
+x-user-id: {{userId}}
 
 ### Get Tabs For Tab Group
 GET http://{{host}}/tab-groups/{{tabGroupId}}/tabs
 Accept: application/json
-user_id: {{userId}}
+x-user-id: {{userId}}
 
 ### Create Tab
 POST http://{{host}}/tabs
 Content-Type: application/json
 Accept: application/json
-user_id: {{userId}}
+x-user-id: {{userId}}
 
 {
   "tabGroupId": "{{tabGroupId}}",
@@ -102,7 +102,7 @@ user_id: {{userId}}
 PATCH http://{{host}}/tabs/{{tabId}}
 Content-Type: application/json
 Accept: application/json
-user_id: {{userId}}
+x-user-id: {{userId}}
 
 {
   "title": "Updated Tab"
@@ -111,13 +111,13 @@ user_id: {{userId}}
 ### Delete Tab
 DELETE http://{{host}}/tabs/{{tabId}}
 Accept: application/json
-user_id: {{userId}}
+x-user-id: {{userId}}
 
 ### Create Environment
 POST http://{{host}}/environments
 Content-Type: application/json
 Accept: application/json
-user_id: {{userId}}
+x-user-id: {{userId}}
 
 {
   "tabId": "{{tabId}}",
@@ -129,7 +129,7 @@ user_id: {{userId}}
 PATCH http://{{host}}/environments/{{environmentId}}
 Content-Type: application/json
 Accept: application/json
-user_id: {{userId}}
+x-user-id: {{userId}}
 
 {
   "name": "Staging",
@@ -139,9 +139,9 @@ user_id: {{userId}}
 ### Delete Environment
 DELETE http://{{host}}/environments/{{environmentId}}
 Accept: application/json
-user_id: {{userId}}
+x-user-id: {{userId}}
 
 ### List Environments For Tab
 GET http://{{host}}/environments/tabs/{{tabId}}
 Accept: application/json
-user_id: {{userId}}
+x-user-id: {{userId}}
