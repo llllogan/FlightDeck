@@ -12,7 +12,7 @@ jobs:
       - name: Hit Coolify deploy endpoint
         env:
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
-          URL: "http://10.10.10.9:8000/api/v1/deploy?uuid=fkgg4sk8s4k0kwcwos8ccs0c&force=false"
+          URL: "http://10.10.10.9:8000/api/v1/deploy?uuid=mgk0ws8w8g4k80ko08k8o4w8&force=false"
         run: |
           curl --fail --show-error --silent \
                --retry 1 --retry-delay 2 --retry-connrefused \
