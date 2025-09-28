@@ -17,7 +17,7 @@ import {
   type UserSummaryRow as UserSummaryRowData,
 } from '../serializers';
 
-type CreateUserRequestHandler = Request<unknown, unknown, Partial<CreateUserRequest>>;
+type CreateUserRequestHandler = Request<Record<string, never>, unknown, Partial<CreateUserRequest>>;
 
 type EmptyRequest = Request;
 
@@ -42,6 +42,16 @@ type StandardResponse = Response<UserRecord | Record<string, unknown>>;
 
 type UsersResponse = Response<UserRecord[] | { error: string }>;
 
+const CREATE_USER_PASSWORD = process.env.CREATE_USER_PASSWORD ?? 'flightdeck-create-user-secret';
+
+function extractCreateUserPassword(req: Request): string | undefined {
+  const headerValue = req.headers['x-admin-password'];
+  if (Array.isArray(headerValue)) {
+    return headerValue[0];
+  }
+  return headerValue;
+}
+
 async function listUsers(_req: EmptyRequest, res: UsersResponse): Promise<void> {
   try {
     const users = await listUsersFromDb();
@@ -53,6 +63,13 @@ async function listUsers(_req: EmptyRequest, res: UsersResponse): Promise<void> 
 }
 
 async function createUser(req: CreateUserRequestHandler, res: StandardResponse): Promise<void> {
+  const providedPassword = extractCreateUserPassword(req);
+
+  if (providedPassword !== CREATE_USER_PASSWORD) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
   const { name } = req.body;
 
   if (!name || typeof name !== 'string' || !name.trim()) {

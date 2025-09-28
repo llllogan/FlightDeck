@@ -3,6 +3,8 @@ name: Trigger Coolify API Deploy
 on:
   push:
     branches: [ "master" ]
+    paths:
+      - 'API/**'
   workflow_dispatch:
 
 jobs:
