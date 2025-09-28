@@ -208,7 +208,7 @@ export class AppComponent implements OnInit {
     }
 
     const urlToOpen = this.normalizeForNavigation(environment.url);
-    window.open(urlToOpen, '_blank', 'noopener');
+    window.location.href = urlToOpen;
     this.environmentMenuState = null;
   }
 

@@ -25,7 +25,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "name": "Logan"
+  "name": "Logan Uni"
 }
 
 ### Delete User
@@ -36,7 +36,7 @@ x-user-id: {{userId}}
 ### Get User Tab Groups
 GET http://{{host}}/users/tab-groups
 Accept: application/json
-x-user-id: {{userId}}
+x-user-id: {{hamish}}
 
 ### Get User Summary
 GET http://{{host}}/users/summary
