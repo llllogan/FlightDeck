@@ -231,6 +231,15 @@ export class AdminUsersComponent implements OnInit {
   }
 
   deleteUser(user: ApiUser): void {
+    const defaultView = this.document.defaultView;
+    const trimmedName = user.name.trim();
+    const displayName = trimmedName ? ` "${trimmedName}"` : '';
+    const confirmed = defaultView ? defaultView.confirm(`Are you sure you want to delete${displayName}?`) : true;
+
+    if (!confirmed) {
+      return;
+    }
+
     if (this.deletingIds.has(user.id)) {
       return;
     }

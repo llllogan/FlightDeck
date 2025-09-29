@@ -1,4 +1,9 @@
 import 'express';
+import type {
+  EnvironmentDetailViewRow,
+  TabDetailViewRow,
+  UserTabGroupViewRow,
+} from '../../db/resourceAccess';
 
 declare global {
   namespace Express {
@@ -9,6 +14,9 @@ declare global {
         name: string;
         role: string | null;
       };
+      tabGroup?: UserTabGroupViewRow;
+      tab?: TabDetailViewRow;
+      environment?: EnvironmentDetailViewRow;
     }
   }
 }

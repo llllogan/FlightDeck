@@ -1,13 +1,18 @@
 import { Router } from 'express';
 import { createTab, renameTab, deleteTab, moveTab } from '../controllers/tabsController';
 import { requireUserId } from '../middleware/userContext';
+import { requireTabAccess, requireTabGroupAccess } from '../middleware/resourceAccess';
 
 const router = Router();
 
 router.use(requireUserId);
-router.post('/', createTab);
-router.patch('/:tabId', renameTab);
-router.post('/:tabId/move', moveTab);
-router.delete('/:tabId', deleteTab);
+router.post(
+  '/',
+  requireTabGroupAccess({ idSource: 'body', idKey: 'tabGroupId', missingMessage: 'tabGroupId is required' }),
+  createTab,
+);
+router.patch('/:tabId', requireTabAccess(), renameTab);
+router.post('/:tabId/move', requireTabAccess(), moveTab);
+router.delete('/:tabId', requireTabAccess(), deleteTab);
 
 export default router;

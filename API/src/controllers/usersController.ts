@@ -50,6 +50,17 @@ type UsersResponse = Response<SerializedUser[] | { error: string }>;
 
 const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+function ensureUserContext(req: Request, res: Response): string | null {
+  const userId = req.userId;
+
+  if (!userId) {
+    res.status(500).json({ error: 'User context not initialized' });
+    return null;
+  }
+
+  return userId;
+}
+
 async function listUsers(_req: EmptyRequest, res: UsersResponse): Promise<void> {
   try {
     const users = await listUsersFromDb();
@@ -226,11 +237,10 @@ async function deleteUserById(req: Request<{ userId: string }>, res: Response): 
   }
 }
 
-async function getUserSummary(req: EmptyRequest, res: SummaryResponse): Promise<void> {
-  const { userId } = req;
+async function getUserSummary(req: Request, res: SummaryResponse): Promise<void> {
+  const userId = ensureUserContext(req, res);
 
   if (!userId) {
-    res.status(400).json({ error: 'Missing user context' });
     return;
   }
 
@@ -252,11 +262,10 @@ async function getUserSummary(req: EmptyRequest, res: SummaryResponse): Promise<
   }
 }
 
-async function getUserTabGroups(req: EmptyRequest, res: TabGroupsResponse): Promise<void> {
-  const { userId } = req;
+async function getUserTabGroups(req: Request, res: TabGroupsResponse): Promise<void> {
+  const userId = ensureUserContext(req, res);
 
   if (!userId) {
-    res.status(400).json({ error: 'Missing user context' });
     return;
   }
 
@@ -271,11 +280,10 @@ async function getUserTabGroups(req: EmptyRequest, res: TabGroupsResponse): Prom
   }
 }
 
-async function getUserWorkspace(req: EmptyRequest, res: WorkspaceResponse): Promise<void> {
-  const { userId } = req;
+async function getUserWorkspace(req: Request, res: WorkspaceResponse): Promise<void> {
+  const userId = ensureUserContext(req, res);
 
   if (!userId) {
-    res.status(400).json({ error: 'Missing user context' });
     return;
   }
 

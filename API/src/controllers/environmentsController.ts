@@ -1,11 +1,9 @@
 import { Request, Response } from 'express';
 import { callStoredProcedure } from '../db/helpers';
 import {
-  getTabById,
   getEnvironmentById,
   getLatestEnvironmentForTab,
   listEnvironmentsForTab,
-  type EnvironmentDetailViewRow,
 } from '../db/resourceAccess';
 import type {
   CreateEnvironmentRequest,
@@ -18,7 +16,7 @@ type SerializedEnvironment = ReturnType<typeof serializeEnvironment>;
 type TabEnvironmentsResponse = Response<SerializedEnvironment[] | { error: string }>;
 type TabEnvironmentRequest = Request<{ tabId: string }>;
 
-type CreateRequest = Request<unknown, unknown, Partial<CreateEnvironmentRequest>>;
+type CreateRequest = Request<Record<string, never>, unknown, Partial<CreateEnvironmentRequest>>;
 
 type EnvironmentParams = { environmentId: string };
 
@@ -26,32 +24,40 @@ type UpdateRequest = Request<EnvironmentParams, unknown, Partial<UpdateEnvironme
 
 type DeleteRequest = Request<EnvironmentParams>;
 
+function ensureTabContext(req: Request, res: Response) {
+  const tab = req.tab;
+
+  if (!tab) {
+    res.status(500).json({ error: 'Tab context not initialized' });
+    return null;
+  }
+
+  return tab;
+}
+
+function ensureEnvironmentContext(req: Request, res: Response) {
+  const environment = req.environment;
+
+  if (!environment) {
+    res.status(500).json({ error: 'Environment context not initialized' });
+    return null;
+  }
+
+  return environment;
+}
+
 async function listEnvironmentsForTabHandler(
   req: TabEnvironmentRequest,
   res: TabEnvironmentsResponse,
 ): Promise<void> {
-  const { userId } = req;
-  const { tabId } = req.params;
+  const tab = ensureTabContext(req, res);
 
-  if (!userId) {
-    res.status(400).json({ error: 'Missing user context' });
-    return;
-  }
-
-  if (!tabId) {
-    res.status(400).json({ error: 'tabId path parameter is required' });
+  if (!tab) {
     return;
   }
 
   try {
-    const tab = await getTabById(tabId);
-
-    if (!tab || tab.userId !== userId) {
-      res.status(404).json({ error: 'Tab not found' });
-      return;
-    }
-
-    const environments = await listEnvironmentsForTab(tabId);
+    const environments = await listEnvironmentsForTab(tab.tabId);
     const formatted = environments.map(serializeEnvironment);
     res.json(formatted);
   } catch (error) {
@@ -61,18 +67,12 @@ async function listEnvironmentsForTabHandler(
 }
 
 async function createEnvironment(req: CreateRequest, res: Response): Promise<void> {
-  const { userId } = req;
-  const { tabId, name, url } = req.body;
+  const tab = ensureTabContext(req, res);
 
-  if (!userId) {
-    res.status(400).json({ error: 'Missing user context' });
+  if (!tab) {
     return;
   }
-
-  if (!tabId || typeof tabId !== 'string') {
-    res.status(400).json({ error: 'tabId is required' });
-    return;
-  }
+  const { name, url } = req.body;
 
   if (!name || typeof name !== 'string' || !name.trim()) {
     res.status(400).json({ error: 'Name is required' });
@@ -85,23 +85,11 @@ async function createEnvironment(req: CreateRequest, res: Response): Promise<voi
   }
 
   try {
-    const tab = await getTabById(tabId);
-
-    if (!tab) {
-      res.status(404).json({ error: 'Tab not found' });
-      return;
-    }
-
-    if (tab.userId !== userId) {
-      res.status(403).json({ error: 'You do not have access to this tab' });
-      return;
-    }
-
     const sanitizedName = name.trim();
     const sanitizedUrl = url.trim();
 
-    await callStoredProcedure('create_environment', [tabId, sanitizedName, sanitizedUrl]);
-    const created = await getLatestEnvironmentForTab(tabId);
+    await callStoredProcedure('create_environment', [tab.tabId, sanitizedName, sanitizedUrl]);
+    const created = await getLatestEnvironmentForTab(tab.tabId);
 
     if (!created) {
       res.status(201).json({ message: 'Environment created but could not retrieve record' });
@@ -116,19 +104,12 @@ async function createEnvironment(req: CreateRequest, res: Response): Promise<voi
 }
 
 async function updateEnvironment(req: UpdateRequest, res: Response): Promise<void> {
-  const { userId } = req;
-  const { environmentId } = req.params;
+  const environment = ensureEnvironmentContext(req, res);
+
+  if (!environment) {
+    return;
+  }
   const { name, url } = req.body;
-
-  if (!userId) {
-    res.status(400).json({ error: 'Missing user context' });
-    return;
-  }
-
-  if (!environmentId) {
-    res.status(400).json({ error: 'environmentId path parameter is required' });
-    return;
-  }
 
   if (!name || typeof name !== 'string' || !name.trim()) {
     res.status(400).json({ error: 'Name is required' });
@@ -141,23 +122,11 @@ async function updateEnvironment(req: UpdateRequest, res: Response): Promise<voi
   }
 
   try {
-    const environment = await getEnvironmentById(environmentId);
-
-    if (!environment) {
-      res.status(404).json({ error: 'Environment not found' });
-      return;
-    }
-
-    if (environment.userId !== userId) {
-      res.status(403).json({ error: 'You do not have access to this environment' });
-      return;
-    }
-
     const sanitizedName = name.trim();
     const sanitizedUrl = url.trim();
 
-    await callStoredProcedure('update_environment', [environmentId, sanitizedName, sanitizedUrl]);
-    const updated = await getEnvironmentById(environmentId);
+    await callStoredProcedure('update_environment', [environment.environmentId, sanitizedName, sanitizedUrl]);
+    const updated = await getEnvironmentById(environment.environmentId);
 
     if (!updated) {
       res.status(500).json({ error: 'Failed to load updated environment' });
@@ -172,33 +141,14 @@ async function updateEnvironment(req: UpdateRequest, res: Response): Promise<voi
 }
 
 async function deleteEnvironment(req: DeleteRequest, res: Response): Promise<void> {
-  const { userId } = req;
-  const { environmentId } = req.params;
+  const environment = ensureEnvironmentContext(req, res);
 
-  if (!userId) {
-    res.status(400).json({ error: 'Missing user context' });
-    return;
-  }
-
-  if (!environmentId) {
-    res.status(400).json({ error: 'environmentId path parameter is required' });
+  if (!environment) {
     return;
   }
 
   try {
-    const environment = await getEnvironmentById(environmentId);
-
-    if (!environment) {
-      res.status(404).json({ error: 'Environment not found' });
-      return;
-    }
-
-    if (environment.userId !== userId) {
-      res.status(403).json({ error: 'You do not have access to this environment' });
-      return;
-    }
-
-    await callStoredProcedure('delete_environment', [environmentId]);
+    await callStoredProcedure('delete_environment', [environment.environmentId]);
     res.status(204).send();
   } catch (error) {
     console.error('Failed to delete environment', error);

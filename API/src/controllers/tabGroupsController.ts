@@ -7,8 +7,6 @@ import {
   listTabGroupsForUser,
   getTabGroupSummaryForUser,
   listTabsForTabGroup,
-  type UserTabGroupViewRow,
-  type TabGroupSummaryRow,
 } from '../db/resourceAccess';
 import type {
   CreateTabGroupRequest,
@@ -27,7 +25,7 @@ type SummaryResponse = Response<SerializedTabGroupSummary[] | { error: string }>
 
 type TabsByGroupResponse = Response<SerializedTab[] | { error: string }>;
 
-type CreateRequest = Request<unknown, unknown, Partial<CreateTabGroupRequest>>;
+type CreateRequest = Request<Record<string, never>, unknown, Partial<CreateTabGroupRequest>>;
 
 type RenameParams = { tabGroupId: string };
 
@@ -41,11 +39,32 @@ type TabsRequestParams = { tabGroupId: string };
 
 type TabsRequest = Request<TabsRequestParams>;
 
-async function listTabGroups(req: Request, res: ListResponse): Promise<void> {
-  const { userId } = req;
+function ensureUserContext(req: Request, res: Response): string | null {
+  const userId = req.userId;
 
   if (!userId) {
-    res.status(400).json({ error: 'Missing user context' });
+    res.status(500).json({ error: 'User context not initialized' });
+    return null;
+  }
+
+  return userId;
+}
+
+function ensureTabGroupContext(req: Request, res: Response) {
+  const tabGroup = req.tabGroup;
+
+  if (!tabGroup) {
+    res.status(500).json({ error: 'Tab group context not initialized' });
+    return null;
+  }
+
+  return tabGroup;
+}
+
+async function listTabGroups(req: Request, res: ListResponse): Promise<void> {
+  const userId = ensureUserContext(req, res);
+
+  if (!userId) {
     return;
   }
 
@@ -61,13 +80,13 @@ async function listTabGroups(req: Request, res: ListResponse): Promise<void> {
 }
 
 async function createTabGroup(req: CreateRequest, res: Response): Promise<void> {
-  const { userId } = req;
-  const { title } = req.body;
+  const userId = ensureUserContext(req, res);
 
   if (!userId) {
-    res.status(400).json({ error: 'Missing user context' });
     return;
   }
+
+  const { title } = req.body;
 
   if (!title || typeof title !== 'string' || !title.trim()) {
     res.status(400).json({ error: 'Title is required' });
@@ -103,19 +122,12 @@ async function createTabGroup(req: CreateRequest, res: Response): Promise<void> 
 }
 
 async function renameTabGroup(req: RenameRequest, res: Response): Promise<void> {
-  const { userId } = req;
-  const { tabGroupId } = req.params;
+  const tabGroup = ensureTabGroupContext(req, res);
+
+  if (!tabGroup) {
+    return;
+  }
   const { title } = req.body;
-
-  if (!userId) {
-    res.status(400).json({ error: 'Missing user context' });
-    return;
-  }
-
-  if (!tabGroupId) {
-    res.status(400).json({ error: 'tabGroupId path parameter is required' });
-    return;
-  }
 
   if (!title || typeof title !== 'string' || !title.trim()) {
     res.status(400).json({ error: 'Title is required' });
@@ -123,15 +135,10 @@ async function renameTabGroup(req: RenameRequest, res: Response): Promise<void> 
   }
 
   try {
-    const existing = await getTabGroupById(tabGroupId);
+    const tabGroupId = tabGroup.tabGroupId;
 
-    if (!existing) {
-      res.status(404).json({ error: 'Tab group not found' });
-      return;
-    }
-
-    if (existing.userId !== userId) {
-      res.status(403).json({ error: 'You do not have access to this tab group' });
+    if (!tabGroupId) {
+      res.status(500).json({ error: 'Tab group record is missing an identifier' });
       return;
     }
 
@@ -151,29 +158,17 @@ async function renameTabGroup(req: RenameRequest, res: Response): Promise<void> 
 }
 
 async function deleteTabGroup(req: DeleteRequest, res: Response): Promise<void> {
-  const { userId } = req;
-  const { tabGroupId } = req.params;
+  const tabGroup = ensureTabGroupContext(req, res);
 
-  if (!userId) {
-    res.status(400).json({ error: 'Missing user context' });
-    return;
-  }
-
-  if (!tabGroupId) {
-    res.status(400).json({ error: 'tabGroupId path parameter is required' });
+  if (!tabGroup) {
     return;
   }
 
   try {
-    const existing = await getTabGroupById(tabGroupId);
+    const tabGroupId = tabGroup.tabGroupId;
 
-    if (!existing) {
-      res.status(404).json({ error: 'Tab group not found' });
-      return;
-    }
-
-    if (existing.userId !== userId) {
-      res.status(403).json({ error: 'You do not have access to this tab group' });
+    if (!tabGroupId) {
+      res.status(500).json({ error: 'Tab group record is missing an identifier' });
       return;
     }
 
@@ -186,19 +181,12 @@ async function deleteTabGroup(req: DeleteRequest, res: Response): Promise<void> 
 }
 
 async function moveTabGroup(req: MoveRequest, res: Response): Promise<void> {
-  const { userId } = req;
-  const { tabGroupId } = req.params;
+  const tabGroup = ensureTabGroupContext(req, res);
+
+  if (!tabGroup) {
+    return;
+  }
   const { direction } = req.body;
-
-  if (!userId) {
-    res.status(400).json({ error: 'Missing user context' });
-    return;
-  }
-
-  if (!tabGroupId) {
-    res.status(400).json({ error: 'tabGroupId path parameter is required' });
-    return;
-  }
 
   if (direction !== 'up' && direction !== 'down') {
     res.status(400).json({ error: 'direction must be "up" or "down"' });
@@ -206,15 +194,10 @@ async function moveTabGroup(req: MoveRequest, res: Response): Promise<void> {
   }
 
   try {
-    const existing = await getTabGroupById(tabGroupId);
+    const tabGroupId = tabGroup.tabGroupId;
 
-    if (!existing) {
-      res.status(404).json({ error: 'Tab group not found' });
-      return;
-    }
-
-    if (existing.userId !== userId) {
-      res.status(403).json({ error: 'You do not have access to this tab group' });
+    if (!tabGroupId) {
+      res.status(500).json({ error: 'Tab group record is missing an identifier' });
       return;
     }
 
@@ -227,10 +210,9 @@ async function moveTabGroup(req: MoveRequest, res: Response): Promise<void> {
 }
 
 async function getTabGroupSummary(req: Request, res: SummaryResponse): Promise<void> {
-  const { userId } = req;
+  const userId = ensureUserContext(req, res);
 
   if (!userId) {
-    res.status(400).json({ error: 'Missing user context' });
     return;
   }
 
@@ -245,24 +227,17 @@ async function getTabGroupSummary(req: Request, res: SummaryResponse): Promise<v
 }
 
 async function listTabsForGroup(req: TabsRequest, res: TabsByGroupResponse): Promise<void> {
-  const { userId } = req;
-  const { tabGroupId } = req.params;
+  const tabGroup = ensureTabGroupContext(req, res);
 
-  if (!userId) {
-    res.status(400).json({ error: 'Missing user context' });
-    return;
-  }
-
-  if (!tabGroupId) {
-    res.status(400).json({ error: 'tabGroupId path parameter is required' });
+  if (!tabGroup) {
     return;
   }
 
   try {
-    const tabGroup = await getTabGroupById(tabGroupId);
+    const tabGroupId = tabGroup.tabGroupId;
 
-    if (!tabGroup || tabGroup.userId !== userId) {
-      res.status(404).json({ error: 'Tab group not found' });
+    if (!tabGroupId) {
+      res.status(500).json({ error: 'Tab group record is missing an identifier' });
       return;
     }
 

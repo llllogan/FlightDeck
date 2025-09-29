@@ -90,10 +90,10 @@ function normalizeQuery(query: SearchQuery): string {
 }
 
 async function searchTabs(req: Request, res: SearchTabsResponse): Promise<void> {
-  const { userId } = req;
+  const userId = req.userId;
 
   if (!userId) {
-    res.status(400).json({ error: 'Missing user context' });
+    res.status(500).json({ error: 'User context not initialized' });
     return;
   }
 

@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import { callStoredProcedure } from '../db/helpers';
 import {
-  getTabGroupById,
   getTabById,
   getLatestTabForGroup,
   getLatestEnvironmentForTab,
@@ -12,7 +11,7 @@ import { serializeEnvironment, serializeTab } from '../serializers';
 type SerializedTab = ReturnType<typeof serializeTab>;
 type SerializedEnvironment = ReturnType<typeof serializeEnvironment>;
 
-type CreateRequest = Request<unknown, unknown, Partial<CreateTabRequest>>;
+type CreateRequest = Request<Record<string, never>, unknown, Partial<CreateTabRequest>>;
 
 type TabParams = { tabId: string };
 
@@ -22,19 +21,35 @@ type DeleteRequest = Request<TabParams>;
 
 type MoveRequest = Request<TabParams, unknown, Partial<MoveTabRequest>>;
 
+function ensureTabGroupContext(req: Request, res: Response) {
+  const tabGroup = req.tabGroup;
+
+  if (!tabGroup) {
+    res.status(500).json({ error: 'Tab group context not initialized' });
+    return null;
+  }
+
+  return tabGroup;
+}
+
+function ensureTabContext(req: Request, res: Response) {
+  const tab = req.tab;
+
+  if (!tab) {
+    res.status(500).json({ error: 'Tab context not initialized' });
+    return null;
+  }
+
+  return tab;
+}
+
 async function createTab(req: CreateRequest, res: Response): Promise<void> {
-  const { userId } = req;
-  const { tabGroupId, title, environment } = req.body;
+  const tabGroup = ensureTabGroupContext(req, res);
 
-  if (!userId) {
-    res.status(400).json({ error: 'Missing user context' });
+  if (!tabGroup) {
     return;
   }
-
-  if (!tabGroupId || typeof tabGroupId !== 'string') {
-    res.status(400).json({ error: 'tabGroupId is required' });
-    return;
-  }
+  const { title, environment } = req.body;
 
   if (!title || typeof title !== 'string' || !title.trim()) {
     res.status(400).json({ error: 'Title is required' });
@@ -59,15 +74,10 @@ async function createTab(req: CreateRequest, res: Response): Promise<void> {
   }
 
   try {
-    const tabGroup = await getTabGroupById(tabGroupId);
+    const resolvedTabGroupId = tabGroup.tabGroupId;
 
-    if (!tabGroup) {
-      res.status(404).json({ error: 'Tab group not found' });
-      return;
-    }
-
-    if (tabGroup.userId !== userId) {
-      res.status(403).json({ error: 'You do not have access to this tab group' });
+    if (!resolvedTabGroupId) {
+      res.status(500).json({ error: 'Tab group record is missing an identifier' });
       return;
     }
 
@@ -75,8 +85,8 @@ async function createTab(req: CreateRequest, res: Response): Promise<void> {
     const sanitizedName = name.trim();
     const sanitizedUrl = url.trim();
 
-    await callStoredProcedure('create_tab', [tabGroupId, sanitizedTitle]);
-    const createdTab = await getLatestTabForGroup(tabGroupId);
+    await callStoredProcedure('create_tab', [resolvedTabGroupId, sanitizedTitle]);
+    const createdTab = await getLatestTabForGroup(resolvedTabGroupId);
 
     if (!createdTab) {
       res.status(201).json({ message: 'Tab created but could not retrieve record' });
@@ -101,19 +111,12 @@ async function createTab(req: CreateRequest, res: Response): Promise<void> {
 }
 
 async function renameTab(req: RenameRequest, res: Response): Promise<void> {
-  const { userId } = req;
-  const { tabId } = req.params;
+  const tab = ensureTabContext(req, res);
+
+  if (!tab) {
+    return;
+  }
   const { title } = req.body;
-
-  if (!userId) {
-    res.status(400).json({ error: 'Missing user context' });
-    return;
-  }
-
-  if (!tabId) {
-    res.status(400).json({ error: 'tabId path parameter is required' });
-    return;
-  }
 
   if (!title || typeof title !== 'string' || !title.trim()) {
     res.status(400).json({ error: 'Title is required' });
@@ -121,20 +124,8 @@ async function renameTab(req: RenameRequest, res: Response): Promise<void> {
   }
 
   try {
-    const tab = await getTabById(tabId);
-
-    if (!tab) {
-      res.status(404).json({ error: 'Tab not found' });
-      return;
-    }
-
-    if (tab.userId !== userId) {
-      res.status(403).json({ error: 'You do not have access to this tab' });
-      return;
-    }
-
-    await callStoredProcedure('rename_tab', [tabId, title.trim()]);
-    const updated = await getTabById(tabId);
+    await callStoredProcedure('rename_tab', [tab.tabId, title.trim()]);
+    const updated = await getTabById(tab.tabId);
 
     if (!updated) {
       res.status(500).json({ error: 'Failed to load updated tab' });
@@ -149,33 +140,14 @@ async function renameTab(req: RenameRequest, res: Response): Promise<void> {
 }
 
 async function deleteTab(req: DeleteRequest, res: Response): Promise<void> {
-  const { userId } = req;
-  const { tabId } = req.params;
+  const tab = ensureTabContext(req, res);
 
-  if (!userId) {
-    res.status(400).json({ error: 'Missing user context' });
-    return;
-  }
-
-  if (!tabId) {
-    res.status(400).json({ error: 'tabId path parameter is required' });
+  if (!tab) {
     return;
   }
 
   try {
-    const tab = await getTabById(tabId);
-
-    if (!tab) {
-      res.status(404).json({ error: 'Tab not found' });
-      return;
-    }
-
-    if (tab.userId !== userId) {
-      res.status(403).json({ error: 'You do not have access to this tab' });
-      return;
-    }
-
-    await callStoredProcedure('delete_tab', [tabId]);
+    await callStoredProcedure('delete_tab', [tab.tabId]);
     res.status(204).send();
   } catch (error) {
     console.error('Failed to delete tab', error);
@@ -184,19 +156,12 @@ async function deleteTab(req: DeleteRequest, res: Response): Promise<void> {
 }
 
 async function moveTab(req: MoveRequest, res: Response): Promise<void> {
-  const { userId } = req;
-  const { tabId } = req.params;
+  const tab = ensureTabContext(req, res);
+
+  if (!tab) {
+    return;
+  }
   const { direction } = req.body;
-
-  if (!userId) {
-    res.status(400).json({ error: 'Missing user context' });
-    return;
-  }
-
-  if (!tabId) {
-    res.status(400).json({ error: 'tabId path parameter is required' });
-    return;
-  }
 
   if (direction !== 'up' && direction !== 'down') {
     res.status(400).json({ error: 'direction must be "up" or "down"' });
@@ -204,19 +169,7 @@ async function moveTab(req: MoveRequest, res: Response): Promise<void> {
   }
 
   try {
-    const tab = await getTabById(tabId);
-
-    if (!tab) {
-      res.status(404).json({ error: 'Tab not found' });
-      return;
-    }
-
-    if (tab.userId !== userId) {
-      res.status(403).json({ error: 'You do not have access to this tab' });
-      return;
-    }
-
-    await callStoredProcedure('move_tab', [tabId, direction]);
+    await callStoredProcedure('move_tab', [tab.tabId, direction]);
     res.status(204).send();
   } catch (error) {
     console.error('Failed to reorder tab', error);
