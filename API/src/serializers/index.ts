@@ -3,6 +3,7 @@ import type {
   EnvironmentDetailViewRow,
   TabDetailViewRow,
   TabGroupSummaryRow,
+  UserRecord,
   UserTabGroupViewRow,
 } from '../db/resourceAccess';
 
@@ -78,5 +79,15 @@ export function serializeTabGroupSummary(row: TabGroupSummaryRow) {
     title: row.tabGroupTitle,
     tabCount: row.tabCount,
     environmentCount: row.environmentCount,
+  };
+}
+
+export function serializeUser(row: UserRecord) {
+  return {
+    id: row.id,
+    name: row.name,
+    role: row.role,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
   };
 }

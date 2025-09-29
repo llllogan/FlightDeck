@@ -1,0 +1,276 @@
+<div class="min-h-screen bg-white text-slate-800 dark:bg-slate-950 dark:text-slate-100">
+  <header class="sticky top-0 z-10 border-b border-slate-200 bg-white/80 backdrop-blur dark:border-slate-700 dark:bg-slate-900/70">
+    <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
+      <div class="font-semibold tracking-tight text-slate-900 dark:text-slate-100">FlightDeck Admin</div>
+      <div class="flex items-center gap-3 text-sm text-slate-500 dark:text-slate-300" *ngIf="currentAdmin$ | async as admin">
+        <span class="hidden sm:inline">Signed in as <span class="font-semibold text-slate-900 dark:text-slate-100">{{ admin.name }}</span></span>
+        <button
+          type="button"
+          class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-1.5 font-medium text-slate-600 transition hover:border-slate-400 hover:text-slate-800 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:text-white"
+          (click)="logout()"
+        >
+          Sign out
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="mx-auto max-w-6xl space-y-10 px-4 py-10 sm:px-6">
+    <section
+      class="rounded-3xl border border-slate-200 bg-white p-6 backdrop-blur dark:border-slate-800 dark:bg-slate-900 sm:p-8"
+    >
+      <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Create a user</h2>
+        </div>
+      </div>
+
+      <form
+        #createUserFormRef
+        class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3"
+        [formGroup]="createUserForm"
+        (ngSubmit)="submit()"
+      >
+        <label class="grid gap-1 text-sm font-medium text-slate-600 dark:text-slate-300">
+          <span>User name</span>
+          <input
+            type="text"
+            formControlName="name"
+            placeholder="first name"
+            class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-slate-900 shadow-sm transition focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:focus:border-slate-500 dark:focus:ring-slate-700"
+            [class.border-red-400]="createAttempted && createUserForm.controls.name.invalid"
+          />
+          <span
+            class="text-xs text-red-500 dark:text-red-300"
+            *ngIf="createAttempted && createUserForm.controls.name.invalid"
+          >
+            Name is required.
+          </span>
+        </label>
+
+        <label class="grid gap-1 text-sm font-medium text-slate-600 dark:text-slate-300">
+          <span>User role (optional)</span>
+          <input
+            type="text"
+            formControlName="role"
+            placeholder="e.g. admin"
+            class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-slate-900 shadow-sm transition focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:focus:border-slate-500 dark:focus:ring-slate-700"
+          />
+        </label>
+
+        <label class="grid gap-1 text-sm font-medium text-slate-600 dark:text-slate-300">
+          <span>Initial password (optional)</span>
+          <input
+            type="password"
+            formControlName="password"
+            placeholder="Leave blank to auto-generate later"
+            class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-slate-900 shadow-sm transition focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:focus:border-slate-500 dark:focus:ring-slate-700"
+          />
+        </label>
+
+        <div class="flex items-end">
+          <button
+            type="submit"
+            class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+            [disabled]="submitting"
+          >
+            {{ submitting ? 'Creating…' : 'Create user' }}
+          </button>
+        </div>
+      </form>
+
+      <p class="mt-3 text-sm text-red-500 dark:text-red-300" *ngIf="submissionError">{{ submissionError }}</p>
+    </section>
+
+    <section class="rounded-3xl border border-slate-200 bg-white p-6 backdrop-blur dark:border-slate-800 dark:bg-slate-900 sm:p-8">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Existing users</h2>
+        </div>
+        <button
+          type="button"
+          class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:text-white"
+          (click)="fetchUsers()"
+          [disabled]="loadingUsers"
+        >
+          {{ loadingUsers ? 'Refreshing…' : 'Refresh' }}
+        </button>
+      </div>
+
+      <div class="mt-6 space-y-3">
+        <p *ngIf="loadError" class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-600/40 dark:bg-red-900/30 dark:text-red-200">
+          {{ loadError }}
+        </p>
+        <p *ngIf="!loadError && !loadingUsers && !hasUsers" class="text-sm text-slate-500 dark:text-slate-400">
+          No users yet. Create one above to get started.
+        </p>
+        <p *ngIf="loadingUsers" class="text-sm text-slate-500 dark:text-slate-400">Loading users…</p>
+
+        <div *ngIf="hasUsers" class="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+          <table
+            mat-table
+            [dataSource]="users"
+            class="admin-users-table w-full bg-transparent text-sm text-slate-600 dark:text-slate-300"
+          >
+            <ng-container matColumnDef="name">
+              <th
+                mat-header-cell
+                *matHeaderCellDef
+                class="text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400"
+              >
+                Name
+              </th>
+              <td mat-cell *matCellDef="let user">
+                <span class="font-medium text-slate-800 dark:text-slate-100">{{ user.name }}</span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="role">
+              <th
+                mat-header-cell
+                *matHeaderCellDef
+                class="text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400"
+              >
+                Role
+              </th>
+              <td mat-cell *matCellDef="let user">
+                <span class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  {{ user.role || '—' }}
+                </span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="id">
+              <th
+                mat-header-cell
+                *matHeaderCellDef
+                class="text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400"
+              >
+                User ID
+              </th>
+              <td mat-cell *matCellDef="let user">
+                <code class="break-all rounded-lg bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-500 dark:bg-slate-900 dark:text-slate-300">
+                  {{ user.id }}
+                </code>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="created">
+              <th
+                mat-header-cell
+                *matHeaderCellDef
+                class="text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400"
+              >
+                Created
+              </th>
+              <td mat-cell *matCellDef="let user">
+                <span class="text-xs text-slate-500 dark:text-slate-400">{{ user.createdAt | date: 'medium' }}</span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="actions">
+              <th
+                mat-header-cell
+                *matHeaderCellDef
+                class="text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400"
+              >
+                Actions
+              </th>
+              <td mat-cell *matCellDef="let user">
+                <div class="flex justify-start gap-2">
+                  <button
+                    type="button"
+                    class="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-900/60 dark:hover:text-white"
+                    (click)="startEdit(user); $event.stopPropagation()"
+                    [disabled]="editingUser?.id === user.id"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    class="inline-flex items-center justify-center gap-2 rounded-full border border-red-200/70 px-3 py-1.5 text-xs font-semibold text-red-500 transition hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-500/40 dark:text-red-300 dark:hover:border-red-400 dark:hover:bg-red-900/40 dark:hover:text-red-200"
+                    (click)="deleteUser(user); $event.stopPropagation()"
+                    [disabled]="deletingIds.has(user.id)"
+                  >
+                    {{ deletingIds.has(user.id) ? 'Deleting…' : 'Delete' }}
+                  </button>
+                </div>
+              </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let user; columns: displayedColumns" class="border-b border-slate-200 last:border-0 dark:border-slate-800"></tr>
+          </table>
+        </div>
+
+        <div
+          *ngIf="editingUser"
+          class="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 sm:p-6"
+        >
+          <form
+            [formGroup]="editUserForm"
+            (ngSubmit)="submitEdit()"
+            class="grid gap-4 sm:grid-cols-[1.2fr_minmax(0,0.9fr)_minmax(0,1.6fr)_minmax(0,1fr)_auto] sm:items-end"
+          >
+            <label class="grid gap-1 font-medium">
+              <span>Name</span>
+              <input
+                type="text"
+                formControlName="name"
+                class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-slate-900 transition focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-slate-500 dark:focus:ring-slate-700"
+              />
+            </label>
+
+            <label class="grid gap-1 font-medium">
+              <span>Role</span>
+              <input
+                type="text"
+                formControlName="role"
+                class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-slate-900 transition focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-slate-500 dark:focus:ring-slate-700"
+              />
+            </label>
+
+            <div class="grid gap-2">
+              <div class="flex items-center justify-between">
+                <label for="edit-password-input" class="font-medium text-slate-600 dark:text-slate-200">New password</label>
+                <label
+                  class="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400"
+                >
+                  <input type="checkbox" formControlName="clearPassword" class="h-4 w-4 rounded" />
+                  Clear existing password
+                </label>
+              </div>
+              <input
+                id="edit-password-input"
+                type="password"
+                formControlName="password"
+                [disabled]="editUserForm.get('clearPassword')?.value || updating"
+                class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-slate-900 transition focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-slate-500 dark:focus:ring-slate-700"
+                placeholder="Leave blank to keep current"
+              />
+            </div>
+
+            <div class="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end">
+              <button
+                type="submit"
+                class="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+                [disabled]="updating"
+              >
+                {{ updating ? 'Saving…' : 'Save changes' }}
+              </button>
+              <button
+                type="button"
+                class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-900/60 dark:hover:text-white"
+                (click)="cancelEdit()"
+                [disabled]="updating"
+              >
+                Cancel
+              </button>
+            </div>
+
+            <p class="text-xs text-red-500 dark:text-red-300 sm:col-span-5" *ngIf="updateError">{{ updateError }}</p>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>

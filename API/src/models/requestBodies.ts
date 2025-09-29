@@ -1,5 +1,13 @@
 export interface CreateUserRequest {
   name: string;
+  role?: string | null;
+  password?: string | null;
+}
+
+export interface UpdateUserRequest {
+  name?: string;
+  role?: string | null;
+  password?: string | null;
 }
 
 export interface CreateTabGroupRequest {
