@@ -6,7 +6,9 @@ import {
   HostListener,
   NgZone,
   OnInit,
+  QueryList,
   ViewChild,
+  ViewChildren,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -70,11 +72,13 @@ export class AppComponent implements OnInit, AfterViewInit {
   editingGroupContext: { sectionIndex: number } | null = null;
   editingGroupTabs: TabViewModel[] = [];
   @ViewChild('tabSearchInput') tabSearchInput?: ElementRef<HTMLInputElement>;
+  @ViewChildren('searchResultButton') searchResultButtons?: QueryList<ElementRef<HTMLButtonElement>>;
   tabSearchControl = new FormControl<string>('', { nonNullable: true });
   searchResults: TabSearchResult[] = [];
   searchLoading = false;
   searchError: string | null = null;
   searchActiveTerm = '';
+  searchActiveIndex: number | null = null;
   private readonly environmentEmojiMap = new Map<string, string>([
     ['prd', '🟢'],
     ['tst', '🟠'],
@@ -142,23 +146,52 @@ export class AppComponent implements OnInit, AfterViewInit {
     this.searchResults = [];
     this.searchError = null;
     this.searchActiveTerm = '';
+    this.searchActiveIndex = null;
     this.focusSearchInput();
   }
 
   onSearchKeydown(event: KeyboardEvent): void {
-    if (event.key !== 'Enter') {
-      return;
-    }
-
     const term = this.tabSearchControl.value.trim();
-    if (!term) {
-      return;
-    }
+    switch (event.key) {
+      case 'ArrowDown': {
+        if (!this.searchResults.length) {
+          return;
+        }
+        event.preventDefault();
+        this.moveSearchHighlight(1);
+        break;
+      }
+      case 'ArrowUp': {
+        if (!this.searchResults.length) {
+          return;
+        }
+        event.preventDefault();
+        this.moveSearchHighlight(-1);
+        break;
+      }
+      case 'Enter': {
+        if (!term) {
+          return;
+        }
 
-    if (!this.searchResults.length) {
-      event.preventDefault();
-      const encoded = encodeURIComponent(term);
-      window.open(`https://www.google.com/search?q=${encoded}`, '_blank', 'noopener');
+        if (this.searchActiveIndex !== null) {
+          const result = this.searchResults[this.searchActiveIndex];
+          if (result) {
+            event.preventDefault();
+            this.launchSearchResult(result);
+          }
+          return;
+        }
+
+        if (!this.searchResults.length) {
+          event.preventDefault();
+          const encoded = encodeURIComponent(term);
+          window.open(`https://www.google.com/search?q=${encoded}`, '_blank', 'noopener');
+        }
+        break;
+      }
+      default:
+        break;
     }
   }
 
@@ -185,6 +218,25 @@ export class AppComponent implements OnInit, AfterViewInit {
     return result.tab.id;
   }
 
+  setSearchHighlight(index: number): void {
+    this.searchActiveIndex = index;
+    this.scrollActiveSearchResultIntoView();
+  }
+
+  get activeSearchOptionId(): string | null {
+    const index = this.searchActiveIndex;
+    if (index === null) {
+      return null;
+    }
+
+    const result = this.searchResults[index];
+    if (!result) {
+      return null;
+    }
+
+    return `tab-search-option-${result.tab.id}`;
+  }
+
   private initializeSearchStream(): void {
     this.tabSearchControl.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -192,6 +244,7 @@ export class AppComponent implements OnInit, AfterViewInit {
         const trimmed = (value ?? '').trim();
         this.searchActiveTerm = trimmed;
         this.searchError = null;
+        this.searchActiveIndex = null;
         this.emitSearchTerm(trimmed);
       });
 
@@ -231,6 +284,7 @@ export class AppComponent implements OnInit, AfterViewInit {
 
         this.searchLoading = false;
         this.searchResults = results;
+        this.syncSearchHighlight();
       });
 
     this.emitSearchTerm(this.tabSearchControl.value.trim());
@@ -238,6 +292,25 @@ export class AppComponent implements OnInit, AfterViewInit {
 
   private emitSearchTerm(term: string): void {
     this.searchTermTrigger$.next({ term, context: this.userContextVersion });
+  }
+
+  private moveSearchHighlight(offset: number): void {
+    if (!this.searchResults.length) {
+      this.searchActiveIndex = null;
+      return;
+    }
+
+    const currentIndex = this.searchActiveIndex ?? (offset > 0 ? -1 : this.searchResults.length);
+    let nextIndex = currentIndex + offset;
+
+    if (nextIndex >= this.searchResults.length) {
+      nextIndex = 0;
+    } else if (nextIndex < 0) {
+      nextIndex = this.searchResults.length - 1;
+    }
+
+    this.searchActiveIndex = nextIndex;
+    this.scrollActiveSearchResultIntoView();
   }
 
   private focusSearchInput(): void {
@@ -255,6 +328,42 @@ export class AppComponent implements OnInit, AfterViewInit {
 
     this.hasFocusedSearchInput = true;
     this.focusSearchInput();
+  }
+
+  private syncSearchHighlight(): void {
+    if (!this.searchResults.length) {
+      this.searchActiveIndex = null;
+      return;
+    }
+
+    if (this.searchActiveIndex === null) {
+      this.searchActiveIndex = 0;
+      this.scrollActiveSearchResultIntoView();
+      return;
+    }
+
+    const maxIndex = this.searchResults.length - 1;
+    if (this.searchActiveIndex > maxIndex) {
+      this.searchActiveIndex = maxIndex;
+      this.scrollActiveSearchResultIntoView();
+    } else {
+      this.scrollActiveSearchResultIntoView();
+    }
+  }
+
+  private scrollActiveSearchResultIntoView(): void {
+    const index = this.searchActiveIndex;
+    if (index === null) {
+      return;
+    }
+
+    this.ngZone.runOutsideAngular(() => {
+      requestAnimationFrame(() => {
+        const buttons = this.searchResultButtons?.toArray();
+        const active = buttons?.[index]?.nativeElement;
+        active?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      });
+    });
   }
 
   isEnvironmentMenuOpen(tabId: string): boolean {

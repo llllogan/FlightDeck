@@ -33,6 +33,10 @@
           class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
           placeholder="Search by tab title or URL"
           [formControl]="tabSearchControl"
+          [attr.aria-expanded]="shouldShowSearchResults"
+          [attr.aria-controls]="shouldShowSearchResults ? 'tab-search-results' : null"
+          [attr.aria-activedescendant]="activeSearchOptionId"
+          aria-autocomplete="list"
           (keydown)="onSearchKeydown($event)"
         />
         <button
@@ -48,6 +52,8 @@
 
       <div
         *ngIf="shouldShowSearchResults"
+        id="tab-search-results"
+        role="listbox"
         class="absolute left-0 right-0 top-full z-20 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"
       >
         <div *ngIf="searchLoading" class="px-4 py-3 text-sm text-slate-500">Searching...</div>
@@ -56,8 +62,15 @@
           <div *ngIf="searchResults.length; else noSearchMatches" class="max-h-80 divide-y divide-slate-100 overflow-auto">
             <button
               type="button"
-              class="flex w-full flex-col items-start gap-2 px-4 py-3 text-left transition hover:bg-slate-50"
-              *ngFor="let result of searchResults; trackBy: trackSearchResult"
+              #searchResultButton
+              class="flex w-full flex-col items-start gap-2 px-4 py-3 text-left transition hover:bg-slate-50 focus:outline-none"
+              *ngFor="let result of searchResults; let i = index; trackBy: trackSearchResult"
+              [class.bg-slate-100]="searchActiveIndex === i"
+              role="option"
+              [attr.aria-selected]="searchActiveIndex === i"
+              [id]="'tab-search-option-' + result.tab.id"
+              (mouseenter)="setSearchHighlight(i)"
+              (focus)="setSearchHighlight(i)"
               (click)="launchSearchResult(result, $event)"
             >
               <div class="flex w-full items-center justify-between gap-3">
