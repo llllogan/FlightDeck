@@ -13,12 +13,12 @@
         <div>
           <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Create a user</h2>
           <p class="text-sm text-slate-500 dark:text-slate-400">
-            Add a new FlightDeck user. Provide the admin password if your API requires it.
+            Add a new FlightDeck user. Optional fields let you set an initial role or password.
           </p>
         </div>
       </div>
 
-      <form class="mt-6 grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)_auto]" [formGroup]="createUserForm" (ngSubmit)="submit()">
+      <form class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3" [formGroup]="createUserForm" (ngSubmit)="submit()">
         <label class="grid gap-1 text-sm font-medium text-slate-600 dark:text-slate-300">
           <span>User name</span>
           <input
@@ -37,11 +37,21 @@
         </label>
 
         <label class="grid gap-1 text-sm font-medium text-slate-600 dark:text-slate-300">
-          <span>Admin password (optional)</span>
+          <span>User role (optional)</span>
+          <input
+            type="text"
+            formControlName="role"
+            placeholder="e.g. admin"
+            class="w-full rounded-xl border border-slate-200 bg-white/90 px-4 py-2.5 text-slate-900 shadow-sm transition focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:focus:border-slate-500 dark:focus:ring-slate-700"
+          />
+        </label>
+
+        <label class="grid gap-1 text-sm font-medium text-slate-600 dark:text-slate-300">
+          <span>Initial password (optional)</span>
           <input
             type="password"
-            formControlName="adminPassword"
-            placeholder="Provide if required"
+            formControlName="password"
+            placeholder="Leave blank to auto-generate later"
             class="w-full rounded-xl border border-slate-200 bg-white/90 px-4 py-2.5 text-slate-900 shadow-sm transition focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:focus:border-slate-500 dark:focus:ring-slate-700"
           />
         </label>
@@ -67,7 +77,7 @@
         <div>
           <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Existing users</h2>
           <p class="text-sm text-slate-500 dark:text-slate-400">
-            Browse, refresh, or delete users. Created time reflects your API clock.
+            Browse, edit, or delete users. Created time reflects your API clock.
           </p>
         </div>
         <button
@@ -90,30 +100,105 @@
         <p *ngIf="loadingUsers" class="text-sm text-slate-500 dark:text-slate-400">Loading users…</p>
 
         <div *ngIf="hasUsers" class="overflow-hidden rounded-2xl border border-slate-200 bg-white/90 shadow-sm dark:border-slate-800 dark:bg-slate-950/40">
-          <div class="hidden grid-cols-[1.2fr_1.6fr_1fr_auto] gap-4 border-b border-slate-200 px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:border-slate-800 dark:text-slate-400 sm:grid">
+          <div class="hidden grid-cols-[1.2fr_minmax(0,0.9fr)_minmax(0,1.6fr)_minmax(0,1fr)_auto] gap-4 border-b border-slate-200 px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:border-slate-800 dark:text-slate-400 sm:grid">
             <span>Name</span>
+            <span>Role</span>
             <span>User ID</span>
             <span>Created</span>
             <span></span>
           </div>
           <ul role="list" class="divide-y divide-slate-200 dark:divide-slate-800">
-            <li
-              *ngFor="let user of users"
-              class="grid gap-3 px-4 py-4 text-sm text-slate-600 transition hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-900/60 sm:grid-cols-[1.2fr_1.6fr_1fr_auto] sm:items-center"
-            >
-              <span class="font-medium text-slate-800 dark:text-slate-100">{{ user.name }}</span>
-              <code class="break-all rounded-lg bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-500 dark:bg-slate-900 dark:text-slate-300">
-                {{ user.id }}
-              </code>
-              <span class="text-xs text-slate-500 dark:text-slate-400">{{ user.createdAt | date: 'medium' }}</span>
-              <button
-                type="button"
-                class="inline-flex items-center justify-center gap-2 rounded-full border border-red-200/70 px-3 py-1.5 text-xs font-semibold text-red-500 transition hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-500/40 dark:text-red-300 dark:hover:border-red-400 dark:hover:bg-red-900/40 dark:hover:text-red-200"
-                (click)="deleteUser(user)"
-                [disabled]="deletingIds.has(user.id)"
-              >
-                {{ deletingIds.has(user.id) ? 'Deleting…' : 'Delete' }}
-              </button>
+            <li class="px-4 py-4" *ngFor="let user of users">
+              <ng-container *ngIf="editingUser?.id !== user.id; else editUserRow">
+                <div class="grid gap-3 text-sm text-slate-600 dark:text-slate-300 sm:grid-cols-[1.2fr_minmax(0,0.9fr)_minmax(0,1.6fr)_minmax(0,1fr)_auto] sm:items-center">
+                  <span class="font-medium text-slate-800 dark:text-slate-100">{{ user.name }}</span>
+                  <span class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ user.role || '—' }}</span>
+                  <code class="break-all rounded-lg bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-500 dark:bg-slate-900 dark:text-slate-300">
+                    {{ user.id }}
+                  </code>
+                  <span class="text-xs text-slate-500 dark:text-slate-400">{{ user.createdAt | date: 'medium' }}</span>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      class="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700 dark:border-slate-600 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-900/60 dark:hover:text-white"
+                      (click)="startEdit(user)"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      class="inline-flex items-center justify-center gap-2 rounded-full border border-red-200/70 px-3 py-1.5 text-xs font-semibold text-red-500 transition hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-500/40 dark:text-red-300 dark:hover:border-red-400 dark:hover:bg-red-900/40 dark:hover:text-red-200"
+                      (click)="deleteUser(user)"
+                      [disabled]="deletingIds.has(user.id)"
+                    >
+                      {{ deletingIds.has(user.id) ? 'Deleting…' : 'Delete' }}
+                    </button>
+                  </div>
+                </div>
+              </ng-container>
+
+              <ng-template #editUserRow>
+                <form
+                  [formGroup]="editUserForm"
+                  (ngSubmit)="submitEdit()"
+                  class="grid gap-4 rounded-2xl border border-slate-200 bg-white/90 p-4 text-sm text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-200 sm:grid-cols-[1.2fr_minmax(0,0.9fr)_minmax(0,1.6fr)_minmax(0,1fr)_auto] sm:items-end"
+                >
+                  <label class="grid gap-1 font-medium">
+                    <span>Name</span>
+                    <input
+                      type="text"
+                      formControlName="name"
+                      class="w-full rounded-xl border border-slate-200 bg-white/90 px-4 py-2.5 text-slate-900 shadow-sm transition focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-slate-500 dark:focus:ring-slate-700"
+                    />
+                  </label>
+
+                  <label class="grid gap-1 font-medium">
+                    <span>Role</span>
+                    <input
+                      type="text"
+                      formControlName="role"
+                      class="w-full rounded-xl border border-slate-200 bg-white/90 px-4 py-2.5 text-slate-900 shadow-sm transition focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-slate-500 dark:focus:ring-slate-700"
+                    />
+                  </label>
+
+                  <div class="grid gap-2">
+                    <label class="grid gap-1 font-medium">
+                      <span>New password</span>
+                      <input
+                        type="password"
+                        formControlName="password"
+                        [disabled]="editUserForm.get('clearPassword')?.value || updating"
+                        class="w-full rounded-xl border border-slate-200 bg-white/90 px-4 py-2.5 text-slate-900 shadow-sm transition focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-slate-500 dark:focus:ring-slate-700"
+                        placeholder="Leave blank to keep current"
+                      />
+                    </label>
+                    <label class="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      <input type="checkbox" formControlName="clearPassword" class="h-4 w-4 rounded" />
+                      Clear existing password
+                    </label>
+                  </div>
+
+                  <div class="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end">
+                    <button
+                      type="submit"
+                      class="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-slate-900/20 transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+                      [disabled]="updating"
+                    >
+                      {{ updating ? 'Saving…' : 'Save changes' }}
+                    </button>
+                    <button
+                      type="button"
+                      class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700 dark:border-slate-600 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-900/60 dark:hover:text-white"
+                      (click)="cancelEdit()"
+                      [disabled]="updating"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+
+                  <p class="text-xs text-red-500 dark:text-red-300 sm:col-span-5" *ngIf="updateError">{{ updateError }}</p>
+                </form>
+              </ng-template>
             </li>
           </ul>
         </div>

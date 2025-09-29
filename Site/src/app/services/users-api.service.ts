@@ -2,13 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
-import {
-  ApiUser,
-  CreateUserPayload,
-  UserSummary,
-  TabGroup,
-  WorkspaceResponse,
-} from '../models';
+import { ApiUser, CreateUserPayload, UpdateUserPayload, UserSummary, TabGroup, WorkspaceResponse } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class UsersApiService {
@@ -20,9 +14,12 @@ export class UsersApiService {
     return this.http.get<ApiUser[]>(this.baseUrl);
   }
 
-  createUser(payload: CreateUserPayload, adminPassword?: string): Observable<ApiUser> {
-    const headers = adminPassword ? new HttpHeaders({ 'x-admin-password': adminPassword }) : undefined;
-    return this.http.post<ApiUser>(this.baseUrl, payload, { headers });
+  createUser(payload: CreateUserPayload): Observable<ApiUser> {
+    return this.http.post<ApiUser>(this.baseUrl, payload);
+  }
+
+  updateUser(userId: string, payload: UpdateUserPayload): Observable<ApiUser> {
+    return this.http.patch<ApiUser>(`${this.baseUrl}/${userId}`, payload);
   }
 
   deleteUser(userId: string): Observable<void> {

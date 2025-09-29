@@ -4,6 +4,7 @@ import { callStoredProcedure, queryAll, querySingle } from './helpers';
 export interface UserRecord extends RowDataPacket {
   id: string;
   name: string;
+  role: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -74,13 +75,42 @@ export interface TabSearchViewRow extends RowDataPacket {
 }
 
 export async function getUserById(userId: string): Promise<UserRecord | undefined> {
-  return querySingle<UserRecord>('SELECT id, name, createdAt, updatedAt FROM users WHERE id = ?', [userId]);
+  return querySingle<UserRecord>(
+    'SELECT id, name, role, createdAt, updatedAt FROM users WHERE id = ?',
+    [userId],
+  );
 }
 
 export async function listUsers(): Promise<UserRecord[]> {
   return queryAll<UserRecord>(
-    'SELECT id, name, createdAt, updatedAt FROM users ORDER BY createdAt ASC',
+    'SELECT id, name, role, createdAt, updatedAt FROM users ORDER BY createdAt ASC',
   );
+}
+
+interface UpdateUserOptions {
+  name?: string;
+  role?: string | null;
+  passwordHash?: string | null;
+  updateName: boolean;
+  updateRole: boolean;
+  updatePassword: boolean;
+}
+
+export async function updateUser(
+  userId: string,
+  options: UpdateUserOptions,
+): Promise<void> {
+  const { name, role, passwordHash, updateName, updateRole, updatePassword } = options;
+
+  await callStoredProcedure('update_user', [
+    userId,
+    name ?? null,
+    role ?? null,
+    passwordHash ?? null,
+    updateName ? 1 : 0,
+    updateRole ? 1 : 0,
+    updatePassword ? 1 : 0,
+  ]);
 }
 
 export async function getTabGroupById(tabGroupId: string): Promise<UserTabGroupViewRow | undefined> {

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   listUsers,
   createUser,
+  updateUserDetails,
   deleteUser,
   getUserSummary,
   getUserTabGroups,
@@ -13,6 +14,7 @@ const router = Router();
 
 router.get('/', listUsers);
 router.post('/', createUser);
+router.patch('/:userId', updateUserDetails);
 router.use(requireUserId);
 router.delete('/', deleteUser);
 router.get('/tab-groups', getUserTabGroups);

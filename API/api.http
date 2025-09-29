@@ -23,7 +23,6 @@ Accept: application/json
 POST http://{{host}}/users
 Content-Type: application/json
 Accept: application/json
-x-admin-password: flightdeck-create-user-secret
 
 {
   "name": "Logan Work"

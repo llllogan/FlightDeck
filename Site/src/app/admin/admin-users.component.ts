@@ -15,7 +15,8 @@ import { ApiUser } from '../models';
 export class AdminUsersComponent implements OnInit {
   readonly createUserForm = this.formBuilder.nonNullable.group({
     name: ['', [Validators.required, Validators.maxLength(100)]],
-    adminPassword: [''],
+    role: [''],
+    password: [''],
   });
 
   users: ApiUser[] = [];
@@ -24,6 +25,16 @@ export class AdminUsersComponent implements OnInit {
   submitting = false;
   submissionError: string | null = null;
   deletingIds = new Set<string>();
+  editingUser: ApiUser | null = null;
+  updating = false;
+  updateError: string | null = null;
+
+  readonly editUserForm = this.formBuilder.group({
+    name: this.formBuilder.nonNullable.control('', [Validators.required, Validators.maxLength(100)]),
+    role: this.formBuilder.control<string | null>(''),
+    password: this.formBuilder.control(''),
+    clearPassword: this.formBuilder.control(false),
+  });
 
   private readonly destroyRef = inject(DestroyRef);
 
@@ -63,22 +74,40 @@ export class AdminUsersComponent implements OnInit {
     }
 
     const name = this.createUserForm.controls.name.value.trim();
-    const adminPassword = this.createUserForm.controls.adminPassword.value.trim();
-
+    const roleInput = this.createUserForm.controls.role.value;
+    const passwordInput = this.createUserForm.controls.password.value;
     if (!name) {
       this.createUserForm.controls.name.setErrors({ required: true });
       return;
+    }
+
+    const payload: { name: string; role?: string | null; password?: string | null } = { name };
+
+    if (typeof roleInput === 'string') {
+      const trimmedRole = roleInput.trim();
+      if (trimmedRole) {
+        payload.role = trimmedRole;
+      }
+    }
+
+    if (typeof passwordInput === 'string') {
+      const trimmedPassword = passwordInput.trim();
+      if (trimmedPassword) {
+        payload.password = trimmedPassword;
+      }
     }
 
     this.submitting = true;
     this.submissionError = null;
 
     this.usersApi
-      .createUser({ name }, adminPassword ? adminPassword : undefined)
+      .createUser(payload)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (user) => {
           this.createUserForm.controls.name.setValue('');
+          this.createUserForm.controls.role.setValue('');
+          this.createUserForm.controls.password.setValue('');
           const nextUsers = [user, ...this.users.filter((existing) => existing.id !== user.id)];
           this.users = nextUsers.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
           this.submitting = false;
@@ -87,6 +116,95 @@ export class AdminUsersComponent implements OnInit {
           console.error('Failed to create user', error);
           this.submissionError = 'Unable to create user.';
           this.submitting = false;
+        },
+      });
+  }
+
+  startEdit(user: ApiUser): void {
+    this.editingUser = user;
+    this.updateError = null;
+    this.updating = false;
+
+    this.editUserForm.reset({
+      name: user.name,
+      role: user.role ?? '',
+      password: '',
+      clearPassword: false,
+    });
+  }
+
+  cancelEdit(): void {
+    this.editingUser = null;
+    this.updating = false;
+    this.updateError = null;
+    this.editUserForm.reset({
+      name: '',
+      role: '',
+      password: '',
+      clearPassword: false,
+    });
+  }
+
+  submitEdit(): void {
+    if (!this.editingUser) {
+      return;
+    }
+
+    if (this.editUserForm.invalid) {
+      this.editUserForm.markAllAsTouched();
+      return;
+    }
+
+    const value = this.editUserForm.getRawValue();
+    const payload: { name?: string; role?: string | null; password?: string | null } = {};
+
+    const trimmedName = value.name.trim();
+    if (!trimmedName) {
+      this.editUserForm.controls.name.setErrors({ required: true });
+      return;
+    }
+
+    if (trimmedName !== this.editingUser.name) {
+      payload.name = trimmedName;
+    }
+
+    const currentRole = this.editingUser.role ?? null;
+    const desiredRole = typeof value.role === 'string' ? value.role.trim() : '';
+    const normalizedRole = desiredRole ? desiredRole : null;
+    if (normalizedRole !== currentRole) {
+      payload.role = normalizedRole;
+    }
+
+    if (value.clearPassword) {
+      payload.password = null;
+    } else if (typeof value.password === 'string') {
+      const trimmedPassword = value.password.trim();
+      if (trimmedPassword) {
+        payload.password = trimmedPassword;
+      }
+    }
+
+    if (Object.keys(payload).length === 0) {
+      this.updateError = 'No changes to save.';
+      return;
+    }
+
+    this.updating = true;
+    this.updateError = null;
+
+    this.usersApi
+      .updateUser(this.editingUser.id, payload)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (updated) => {
+          this.users = this.users.map((existing) => (existing.id === updated.id ? updated : existing));
+          this.updating = false;
+          this.cancelEdit();
+        },
+        error: (error) => {
+          console.error('Failed to update user', error);
+          this.updateError = 'Unable to update user.';
+          this.updating = false;
         },
       });
   }
@@ -109,6 +227,9 @@ export class AdminUsersComponent implements OnInit {
           const updated = new Set(this.deletingIds);
           updated.delete(user.id);
           this.deletingIds = updated;
+          if (this.editingUser?.id === user.id) {
+            this.cancelEdit();
+          }
         },
         error: (error) => {
           console.error('Failed to delete user', error);

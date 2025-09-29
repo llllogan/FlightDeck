@@ -1,6 +1,7 @@
 export interface ApiUser {
   id: string;
   name: string;
+  role: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -65,6 +66,14 @@ export interface TabSearchResult {
 
 export interface CreateUserPayload {
   name: string;
+  role?: string | null;
+  password?: string | null;
+}
+
+export interface UpdateUserPayload {
+  name?: string;
+  role?: string | null;
+  password?: string | null;
 }
 
 export interface CreateTabGroupPayload {

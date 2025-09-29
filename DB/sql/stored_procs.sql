@@ -2,11 +2,47 @@ DELIMITER $$
 
 DROP PROCEDURE IF EXISTS create_user $$
 CREATE PROCEDURE create_user (
-    IN p_name VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    IN p_name VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    IN p_role VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    IN p_password_hash VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
 )
 BEGIN
-    INSERT INTO users (id, name, createdAt, updatedAt)
-    VALUES (UUID(), p_name, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+    DECLARE v_role VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    DECLARE v_password_hash VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+    SET v_role = NULLIF(TRIM(p_role), '');
+    SET v_password_hash = NULLIF(p_password_hash, '');
+
+    INSERT INTO users (id, name, role, passwordHash, createdAt, updatedAt)
+    VALUES (UUID(), p_name, v_role, v_password_hash, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+END $$
+
+DROP PROCEDURE IF EXISTS update_user $$
+CREATE PROCEDURE update_user (
+    IN p_user_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    IN p_name VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    IN p_role VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    IN p_password_hash VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    IN p_update_name TINYINT,
+    IN p_update_role TINYINT,
+    IN p_update_password TINYINT
+)
+BEGIN
+    DECLARE v_role VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    DECLARE v_password_hash VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    DECLARE v_should_update TINYINT;
+
+    SET v_role = NULLIF(TRIM(p_role), '');
+    SET v_password_hash = NULLIF(p_password_hash, '');
+    SET v_should_update = p_update_name OR p_update_role OR p_update_password;
+
+    UPDATE users
+    SET
+        name = CASE WHEN p_update_name = 1 THEN p_name ELSE name END,
+        role = CASE WHEN p_update_role = 1 THEN v_role ELSE role END,
+        passwordHash = CASE WHEN p_update_password = 1 THEN v_password_hash ELSE passwordHash END,
+        updatedAt = CASE WHEN v_should_update = 1 THEN CURRENT_TIMESTAMP ELSE updatedAt END
+    WHERE id = p_user_id;
 END $$
 
 DROP PROCEDURE IF EXISTS create_tab_group $$
