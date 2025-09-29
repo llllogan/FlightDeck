@@ -1,5 +1,5 @@
 import type { RowDataPacket } from 'mysql2/promise';
-import { queryAll, querySingle } from './helpers';
+import { callStoredProcedure, queryAll, querySingle } from './helpers';
 
 export interface UserRecord extends RowDataPacket {
   id: string;
@@ -51,6 +51,26 @@ export interface TabGroupSummaryRow extends RowDataPacket {
   userName: string;
   tabCount: number;
   environmentCount: number;
+}
+
+export interface TabSearchViewRow extends RowDataPacket {
+  userId: string;
+  userName: string;
+  tabId: string;
+  tabTitle: string;
+  tabSortOrder: number;
+  tabCreatedAt: Date;
+  tabUpdatedAt: Date;
+  tabGroupId: string;
+  tabGroupTitle: string;
+  tabGroupSortOrder: number;
+  tabGroupCreatedAt: Date;
+  tabGroupUpdatedAt: Date;
+  environmentId: string | null;
+  environmentName: string | null;
+  environmentUrl: string | null;
+  environmentCreatedAt: Date | null;
+  environmentUpdatedAt: Date | null;
 }
 
 export async function getUserById(userId: string): Promise<UserRecord | undefined> {
@@ -125,4 +145,18 @@ export async function getTabGroupSummaryForUser(userId: string): Promise<TabGrou
 
 export async function listEnvironmentsForTab(tabId: string): Promise<EnvironmentDetailViewRow[]> {
   return queryAll<EnvironmentDetailViewRow>('SELECT * FROM environment_detail_view WHERE tabId = ?', [tabId]);
+}
+
+export async function searchTabsForUser(userId: string, query: string): Promise<TabSearchViewRow[]> {
+  const trimmed = query.trim();
+  if (!trimmed) {
+    return [];
+  }
+
+  const [resultSet] = await callStoredProcedure<RowDataPacket[][]>('search_user_tabs', [userId, trimmed]);
+  if (!Array.isArray(resultSet)) {
+    return [];
+  }
+
+  return resultSet as TabSearchViewRow[];
 }

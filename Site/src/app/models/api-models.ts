@@ -57,6 +57,12 @@ export interface WorkspaceResponse {
   tabGroups: WorkspaceTabGroup[];
 }
 
+export interface TabSearchResult {
+  tab: Tab;
+  tabGroup: TabGroup;
+  environments: Environment[];
+}
+
 export interface CreateUserPayload {
   name: string;
 }

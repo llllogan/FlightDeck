@@ -7,6 +7,7 @@ import tabGroupRoutes from './routes/tabGroups';
 import tabRoutes from './routes/tabs';
 import environmentRoutes from './routes/environments';
 import faviconRoutes from './routes/favicons';
+import searchRoutes from './routes/search';
 
 const app = express();
 const apiRouter = express.Router();
@@ -39,6 +40,7 @@ apiRouter.use('/tab-groups', tabGroupRoutes);
 apiRouter.use('/tabs', tabRoutes);
 apiRouter.use('/environments', environmentRoutes);
 apiRouter.use('/favicons', faviconRoutes);
+apiRouter.use('/search', searchRoutes);
 
 app.use('/api', apiRouter);
 
