@@ -1,18 +1,22 @@
-import { CommonModule } from '@angular/common';
-import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { CommonModule, DOCUMENT } from '@angular/common';
+import { Component, DestroyRef, ElementRef, OnInit, ViewChild, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { UsersApiService } from '../services/users-api.service';
 import { ApiUser } from '../models';
+import { MatTableModule } from '@angular/material/table';
 
 @Component({
   selector: 'app-admin-users',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, MatTableModule],
   templateUrl: './admin-users.component.html',
   styleUrls: ['./admin-users.component.css'],
 })
 export class AdminUsersComponent implements OnInit {
+  @ViewChild('createUserFormRef')
+  private createUserFormRef?: ElementRef<HTMLFormElement>;
+
   readonly createUserForm = this.formBuilder.nonNullable.group({
     name: ['', [Validators.required, Validators.maxLength(100)]],
     role: [''],
@@ -28,6 +32,8 @@ export class AdminUsersComponent implements OnInit {
   editingUser: ApiUser | null = null;
   updating = false;
   updateError: string | null = null;
+  readonly displayedColumns: string[] = ['name', 'role', 'id', 'created', 'actions'];
+  createAttempted = false;
 
   readonly editUserForm = this.formBuilder.group({
     name: this.formBuilder.nonNullable.control('', [Validators.required, Validators.maxLength(100)]),
@@ -37,6 +43,8 @@ export class AdminUsersComponent implements OnInit {
   });
 
   private readonly destroyRef = inject(DestroyRef);
+
+  private readonly document = inject(DOCUMENT);
 
   constructor(private readonly usersApi: UsersApiService, private readonly formBuilder: FormBuilder) {}
 
@@ -68,8 +76,9 @@ export class AdminUsersComponent implements OnInit {
   }
 
   submit(): void {
+    this.createAttempted = true;
+
     if (this.createUserForm.invalid) {
-      this.createUserForm.markAllAsTouched();
       return;
     }
 
@@ -108,6 +117,8 @@ export class AdminUsersComponent implements OnInit {
           this.createUserForm.controls.name.setValue('');
           this.createUserForm.controls.role.setValue('');
           this.createUserForm.controls.password.setValue('');
+          this.createAttempted = false;
+          this.blurActiveCreateInput();
           const nextUsers = [user, ...this.users.filter((existing) => existing.id !== user.id)];
           this.users = nextUsers.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
           this.submitting = false;
@@ -238,5 +249,18 @@ export class AdminUsersComponent implements OnInit {
           this.deletingIds = updated;
         },
       });
+  }
+
+  private blurActiveCreateInput(): void {
+    const formElement = this.createUserFormRef?.nativeElement;
+    const activeElement = this.document?.activeElement as HTMLElement | null;
+
+    if (!formElement || !activeElement) {
+      return;
+    }
+
+    if (formElement.contains(activeElement)) {
+      activeElement.blur();
+    }
   }
 }

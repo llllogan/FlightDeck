@@ -13,10 +13,11 @@ import {
 } from '../db/resourceAccess';
 import {
   isCompleteTabGroupRow,
-  serializeTabGroup,
-  serializeUserSummary,
-  serializeTab,
   serializeEnvironment,
+  serializeTab,
+  serializeTabGroup,
+  serializeUser,
+  serializeUserSummary,
   type UserSummaryRow as UserSummaryRowData,
 } from '../serializers';
 
@@ -42,16 +43,17 @@ type SummaryResponse = Response<SerializedUserSummary | { error: string }>;
 
 type TabGroupsResponse = Response<SerializedTabGroup[] | { error: string }>;
 
-type StandardResponse = Response<UserRecord | Record<string, unknown>>;
+type SerializedUser = ReturnType<typeof serializeUser>;
+type StandardResponse = Response<SerializedUser | Record<string, unknown>>;
 
-type UsersResponse = Response<UserRecord[] | { error: string }>;
+type UsersResponse = Response<SerializedUser[] | { error: string }>;
 
 const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 async function listUsers(_req: EmptyRequest, res: UsersResponse): Promise<void> {
   try {
     const users = await listUsersFromDb();
-    res.json(users);
+    res.json(users.map(serializeUser));
   } catch (error) {
     console.error('Failed to list users', error);
     res.status(500).json({ error: 'Failed to list users' });
@@ -107,7 +109,7 @@ async function createUser(req: CreateUserRequestHandler, res: StandardResponse):
       return;
     }
 
-    res.status(201).json(createdUser);
+    res.status(201).json(serializeUser(createdUser));
   } catch (error) {
     console.error('Failed to create user', error);
     res.status(500).json({ error: 'Failed to create user' });
@@ -190,7 +192,7 @@ async function updateUserDetails(req: UpdateUserRequestHandler, res: StandardRes
       return;
     }
 
-    res.json(updatedUser);
+    res.json(serializeUser(updatedUser));
   } catch (error) {
     console.error('Failed to update user', error);
     res.status(500).json({ error: 'Failed to update user' });

@@ -1,3 +1,21 @@
 :host {
   display: block;
 }
+
+.admin-users-table .mat-mdc-header-cell,
+.admin-users-table .mat-mdc-cell {
+  padding: 16px;
+  border-bottom-color: transparent;
+}
+
+.admin-users-table .mat-mdc-header-cell {
+  background-color: transparent;
+}
+
+.admin-users-table .mat-mdc-row {
+  transition: background-color 0.2s ease;
+}
+
+.admin-users-table .mat-mdc-row:hover {
+  background-color: rgba(15, 23, 42, 0.04);
+}
