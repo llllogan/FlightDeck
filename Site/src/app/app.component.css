@@ -33,6 +33,12 @@
   text-transform: uppercase;
 }
 
+input[type='search']::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  height: 0;
+  width: 0;
+}
+
 .line-clamp-1 {
   display: -webkit-box;
   -webkit-line-clamp: 1;

@@ -1,9 +1,20 @@
-import { Component, DestroyRef, HostListener, NgZone, OnInit } from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  DestroyRef,
+  ElementRef,
+  HostListener,
+  NgZone,
+  OnInit,
+  QueryList,
+  ViewChild,
+  ViewChildren,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { forkJoin, Observable, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { forkJoin, Observable, Subject, of } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged, map, switchMap } from 'rxjs/operators';
 
 import {
   Environment,
@@ -13,6 +24,7 @@ import {
   UserSummary,
   CreateTabPayload,
   WorkspaceResponse,
+  TabSearchResult,
 } from './models';
 import { CurrentUserService } from './services/current-user.service';
 import { UsersApiService } from './services/users-api.service';
@@ -20,6 +32,7 @@ import { TabGroupsApiService } from './services/tab-groups-api.service';
 import { TabsApiService } from './services/tabs-api.service';
 import { EnvironmentsApiService } from './services/environments-api.service';
 import { ConstsApiService } from './services/consts-api.service';
+import { TabSearchApiService } from './services/tab-search-api.service';
 import { environment as appEnvironment } from '../environments/environment';
 
 interface TabViewModel {
@@ -41,7 +54,7 @@ interface TabSection {
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css'],
 })
-export class AppComponent implements OnInit {
+export class AppComponent implements OnInit, AfterViewInit {
   summary: UserSummary | null = null;
   sections: TabSection[] = [];
   environmentCodes: string[] = [];
@@ -58,6 +71,14 @@ export class AppComponent implements OnInit {
   editGroupForm: FormGroup | null = null;
   editingGroupContext: { sectionIndex: number } | null = null;
   editingGroupTabs: TabViewModel[] = [];
+  @ViewChild('tabSearchInput') tabSearchInput?: ElementRef<HTMLInputElement>;
+  @ViewChildren('searchResultButton') searchResultButtons?: QueryList<ElementRef<HTMLButtonElement>>;
+  tabSearchControl = new FormControl<string>('', { nonNullable: true });
+  searchResults: TabSearchResult[] = [];
+  searchLoading = false;
+  searchError: string | null = null;
+  searchActiveTerm = '';
+  searchActiveIndex: number | null = null;
   private readonly environmentEmojiMap = new Map<string, string>([
     ['prd', '🟢'],
     ['tst', '🟠'],
@@ -67,6 +88,9 @@ export class AppComponent implements OnInit {
     ['local', '🟡'],
   ]);
   private readonly faviconErrorTabIds: Set<string> = new Set();
+  private readonly searchTermTrigger$ = new Subject<{ term: string; context: number }>();
+  private userContextVersion = 0;
+  private hasFocusedSearchInput = false;
 
   private userId: string | null = null;
 
@@ -78,17 +102,27 @@ export class AppComponent implements OnInit {
     private readonly tabsApi: TabsApiService,
     private readonly constsApi: ConstsApiService,
     private readonly environmentsApi: EnvironmentsApiService,
+    private readonly tabSearchApi: TabSearchApiService,
     private readonly formBuilder: FormBuilder,
     private readonly ngZone: NgZone,
   ) {
+    this.initializeSearchStream();
+
     this.currentUser.userId$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((userId) => {
         this.runInZone(() => {
+          this.userId = userId ?? null;
+          this.userContextVersion += 1;
+          this.emitSearchTerm(this.searchActiveTerm);
+
           if (userId) {
-            this.userId = userId;
             this.loadEnvironmentCodes();
             this.loadWorkspace(userId);
+          } else {
+            this.summary = null;
+            this.sections = [];
+            this.searchResults = [];
           }
         });
       });
@@ -101,6 +135,265 @@ export class AppComponent implements OnInit {
       .subscribe({
         error: (err) => this.handleError('Failed to initialize user context.', err),
       });
+  }
+
+  ngAfterViewInit(): void {
+    this.focusSearchInputOnce();
+  }
+
+  clearSearch(): void {
+    this.tabSearchControl.setValue('');
+    this.searchResults = [];
+    this.searchError = null;
+    this.searchActiveTerm = '';
+    this.searchActiveIndex = null;
+    this.focusSearchInput();
+  }
+
+  onSearchKeydown(event: KeyboardEvent): void {
+    const term = this.tabSearchControl.value.trim();
+    switch (event.key) {
+      case 'ArrowDown': {
+        if (!this.searchResults.length) {
+          return;
+        }
+        event.preventDefault();
+        this.moveSearchHighlight(1);
+        break;
+      }
+      case 'ArrowUp': {
+        if (!this.searchResults.length) {
+          return;
+        }
+        event.preventDefault();
+        this.moveSearchHighlight(-1);
+        break;
+      }
+      case 'Enter': {
+        if (!term) {
+          return;
+        }
+
+        if (this.searchActiveIndex !== null) {
+          const result = this.searchResults[this.searchActiveIndex];
+          if (result) {
+            event.preventDefault();
+            this.launchSearchResult(result);
+          }
+          return;
+        }
+
+        if (!this.searchResults.length) {
+          event.preventDefault();
+          const encoded = encodeURIComponent(term);
+          window.open(`https://www.google.com/search?q=${encoded}`, '_blank', 'noopener');
+        }
+        break;
+      }
+      case '1':
+      case '2':
+      case '3':
+      case '4':
+      case '5':
+      case '6':
+      case '7':
+      case '8':
+      case '9': {
+        if (this.searchActiveIndex === null) {
+          return;
+        }
+
+        const result = this.searchResults[this.searchActiveIndex];
+        if (!result) {
+          return;
+        }
+
+        const environmentIndex = parseInt(event.key, 10) - 1;
+        if (environmentIndex < 0) {
+          return;
+        }
+
+        const environment = result.environments[environmentIndex];
+        if (environment?.url) {
+          event.preventDefault();
+          this.openEnvironment(environment);
+        }
+        break;
+      }
+      default:
+        break;
+    }
+  }
+
+  launchSearchResult(result: TabSearchResult, event?: MouseEvent): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+
+    const primary = this.getPrimaryEnvironment(result.environments);
+    if (!primary?.url) {
+      return;
+    }
+
+    this.openEnvironment(primary);
+  }
+
+  get shouldShowSearchResults(): boolean {
+    return Boolean(
+      this.searchActiveTerm &&
+        (this.searchResults.length > 0 || this.searchLoading || this.searchError),
+    );
+  }
+
+  trackSearchResult(_index: number, result: TabSearchResult): string {
+    return result.tab.id;
+  }
+
+  setSearchHighlight(index: number): void {
+    this.searchActiveIndex = index;
+    this.scrollActiveSearchResultIntoView();
+  }
+
+  get activeSearchOptionId(): string | null {
+    const index = this.searchActiveIndex;
+    if (index === null) {
+      return null;
+    }
+
+    const result = this.searchResults[index];
+    if (!result) {
+      return null;
+    }
+
+    return `tab-search-option-${result.tab.id}`;
+  }
+
+  private initializeSearchStream(): void {
+    this.tabSearchControl.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((value) => {
+        const trimmed = (value ?? '').trim();
+        this.searchActiveTerm = trimmed;
+        this.searchError = null;
+        this.searchActiveIndex = null;
+        this.emitSearchTerm(trimmed);
+      });
+
+    this.searchTermTrigger$
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        debounceTime(200),
+        distinctUntilChanged((prev, curr) => prev.term === curr.term && prev.context === curr.context),
+        switchMap(({ term, context }) => {
+          if (!term || !this.userId) {
+            this.searchLoading = false;
+            this.searchError = null;
+            if (!term) {
+              this.searchResults = [];
+            }
+            return of({ context, results: [] as TabSearchResult[] });
+          }
+
+          this.searchLoading = true;
+          this.searchError = null;
+
+          return this.tabSearchApi.search(this.userId, term).pipe(
+            map((results) => ({ context, results })),
+            catchError((err) => {
+              console.error('Failed to search tabs', err);
+              this.searchLoading = false;
+              this.searchError = 'Unable to search tabs right now.';
+              return of({ context, results: [] as TabSearchResult[] });
+            }),
+          );
+        }),
+      )
+      .subscribe(({ context, results }) => {
+        if (context !== this.userContextVersion) {
+          return;
+        }
+
+        this.searchLoading = false;
+        this.searchResults = results;
+        this.syncSearchHighlight();
+      });
+
+    this.emitSearchTerm(this.tabSearchControl.value.trim());
+  }
+
+  private emitSearchTerm(term: string): void {
+    this.searchTermTrigger$.next({ term, context: this.userContextVersion });
+  }
+
+  private moveSearchHighlight(offset: number): void {
+    if (!this.searchResults.length) {
+      this.searchActiveIndex = null;
+      return;
+    }
+
+    const currentIndex = this.searchActiveIndex ?? (offset > 0 ? -1 : this.searchResults.length);
+    let nextIndex = currentIndex + offset;
+
+    if (nextIndex >= this.searchResults.length) {
+      nextIndex = 0;
+    } else if (nextIndex < 0) {
+      nextIndex = this.searchResults.length - 1;
+    }
+
+    this.searchActiveIndex = nextIndex;
+    this.scrollActiveSearchResultIntoView();
+  }
+
+  private focusSearchInput(): void {
+    this.ngZone.runOutsideAngular(() => {
+      requestAnimationFrame(() => {
+        this.tabSearchInput?.nativeElement.focus({ preventScroll: true });
+      });
+    });
+  }
+
+  private focusSearchInputOnce(): void {
+    if (this.hasFocusedSearchInput) {
+      return;
+    }
+
+    this.hasFocusedSearchInput = true;
+    this.focusSearchInput();
+  }
+
+  private syncSearchHighlight(): void {
+    if (!this.searchResults.length) {
+      this.searchActiveIndex = null;
+      return;
+    }
+
+    if (this.searchActiveIndex === null) {
+      this.searchActiveIndex = 0;
+      this.scrollActiveSearchResultIntoView();
+      return;
+    }
+
+    const maxIndex = this.searchResults.length - 1;
+    if (this.searchActiveIndex > maxIndex) {
+      this.searchActiveIndex = maxIndex;
+      this.scrollActiveSearchResultIntoView();
+    } else {
+      this.scrollActiveSearchResultIntoView();
+    }
+  }
+
+  private scrollActiveSearchResultIntoView(): void {
+    const index = this.searchActiveIndex;
+    if (index === null) {
+      return;
+    }
+
+    this.ngZone.runOutsideAngular(() => {
+      requestAnimationFrame(() => {
+        const buttons = this.searchResultButtons?.toArray();
+        const active = buttons?.[index]?.nativeElement;
+        active?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      });
+    });
   }
 
   isEnvironmentMenuOpen(tabId: string): boolean {
