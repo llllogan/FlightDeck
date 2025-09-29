@@ -1,0 +1,40 @@
+<div class="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-4">
+  <div class="w-full max-w-md rounded-3xl border border-slate-800 bg-slate-900/80 p-8 shadow-lg shadow-slate-900/40 backdrop-blur">
+    <div class="mb-6 text-center">
+      <h1 class="text-2xl font-semibold tracking-tight">FlightDeck Admin</h1>
+      <p class="mt-2 text-sm text-slate-400">Sign in with your admin credentials to continue.</p>
+    </div>
+
+    <form [formGroup]="loginForm" (ngSubmit)="submit()" class="space-y-4">
+      <label class="block text-sm font-medium text-slate-300">
+        <span class="mb-1 block">Name</span>
+        <input
+          type="text"
+          formControlName="name"
+          class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-slate-100 transition focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-700"
+          [class.border-red-500]="loginForm.controls.name.invalid && loginForm.controls.name.touched"
+        />
+      </label>
+
+      <label class="block text-sm font-medium text-slate-300">
+        <span class="mb-1 block">Password</span>
+        <input
+          type="password"
+          formControlName="password"
+          class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-slate-100 transition focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-700"
+          [class.border-red-500]="loginForm.controls.password.invalid && loginForm.controls.password.touched"
+        />
+      </label>
+
+      <button
+        type="submit"
+        class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-slate-500 disabled:cursor-not-allowed disabled:opacity-60"
+        [disabled]="submitting"
+      >
+        {{ submitting ? 'Signing in…' : 'Sign in' }}
+      </button>
+    </form>
+
+    <p class="mt-4 text-sm text-red-400" *ngIf="error">{{ error }}</p>
+  </div>
+</div>

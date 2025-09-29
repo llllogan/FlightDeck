@@ -7,6 +7,30 @@
 # @host = flightdeck.site/api
 @host = localhost:3000/api
 
+### Admin Login (JWT)
+POST http://{{host}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "admin",
+  "password": "admin-password"
+}
+
+### Refresh Access Token
+POST http://{{host}}/auth/refresh
+Content-Type: application/json
+Accept: application/json
+
+{
+  "refreshToken": "<refresh_token_here>"
+}
+
+### Admin List Users (requires Bearer token)
+GET http://{{host}}/admin/users
+Accept: application/json
+Authorization: Bearer <access_token_here>
+
 ### Health Check
 GET http://{{host}}/health
 Accept: application/json
@@ -14,24 +38,6 @@ Accept: application/json
 ### List Constants
 GET http://{{host}}/consts/environments
 Accept: application/json
-
-### List Users
-GET http://{{host}}/users
-Accept: application/json
-
-### Create User
-POST http://{{host}}/users
-Content-Type: application/json
-Accept: application/json
-
-{
-  "name": "Logan Work"
-}
-
-### Delete User
-DELETE http://{{host}}/users
-Accept: application/json
-x-user-id: {{userId}}
 
 ### Get User Tab Groups
 GET http://{{host}}/users/tab-groups

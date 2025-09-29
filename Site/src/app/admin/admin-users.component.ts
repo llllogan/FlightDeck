@@ -2,7 +2,9 @@ import { CommonModule, DOCUMENT } from '@angular/common';
 import { Component, DestroyRef, ElementRef, OnInit, ViewChild, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { UsersApiService } from '../services/users-api.service';
+import { HttpErrorResponse } from '@angular/common/http';
+import { AdminUsersApiService } from '../services/admin-users-api.service';
+import { AuthService } from '../services/auth.service';
 import { ApiUser } from '../models';
 import { MatTableModule } from '@angular/material/table';
 
@@ -34,6 +36,7 @@ export class AdminUsersComponent implements OnInit {
   updateError: string | null = null;
   readonly displayedColumns: string[] = ['name', 'role', 'id', 'created', 'actions'];
   createAttempted = false;
+  readonly currentAdmin$ = this.authService.user$;
 
   readonly editUserForm = this.formBuilder.group({
     name: this.formBuilder.nonNullable.control('', [Validators.required, Validators.maxLength(100)]),
@@ -46,7 +49,11 @@ export class AdminUsersComponent implements OnInit {
 
   private readonly document = inject(DOCUMENT);
 
-  constructor(private readonly usersApi: UsersApiService, private readonly formBuilder: FormBuilder) {}
+  constructor(
+    private readonly adminUsersApi: AdminUsersApiService,
+    private readonly formBuilder: FormBuilder,
+    private readonly authService: AuthService,
+  ) {}
 
   ngOnInit(): void {
     this.fetchUsers();
@@ -59,7 +66,7 @@ export class AdminUsersComponent implements OnInit {
   fetchUsers(): void {
     this.loadingUsers = true;
     this.loadError = null;
-    this.usersApi
+    this.adminUsersApi
       .listUsers()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
@@ -71,6 +78,7 @@ export class AdminUsersComponent implements OnInit {
           console.error('Failed to load users', error);
           this.loadError = 'Unable to fetch users.';
           this.loadingUsers = false;
+          this.handleAuthError(error);
         },
       });
   }
@@ -109,7 +117,7 @@ export class AdminUsersComponent implements OnInit {
     this.submitting = true;
     this.submissionError = null;
 
-    this.usersApi
+    this.adminUsersApi
       .createUser(payload)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
@@ -127,6 +135,7 @@ export class AdminUsersComponent implements OnInit {
           console.error('Failed to create user', error);
           this.submissionError = 'Unable to create user.';
           this.submitting = false;
+          this.handleAuthError(error);
         },
       });
   }
@@ -203,7 +212,7 @@ export class AdminUsersComponent implements OnInit {
     this.updating = true;
     this.updateError = null;
 
-    this.usersApi
+    this.adminUsersApi
       .updateUser(this.editingUser.id, payload)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
@@ -216,6 +225,7 @@ export class AdminUsersComponent implements OnInit {
           console.error('Failed to update user', error);
           this.updateError = 'Unable to update user.';
           this.updating = false;
+          this.handleAuthError(error);
         },
       });
   }
@@ -229,7 +239,7 @@ export class AdminUsersComponent implements OnInit {
     deleting.add(user.id);
     this.deletingIds = deleting;
 
-    this.usersApi
+    this.adminUsersApi
       .deleteUser(user.id)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
@@ -247,8 +257,24 @@ export class AdminUsersComponent implements OnInit {
           const updated = new Set(this.deletingIds);
           updated.delete(user.id);
           this.deletingIds = updated;
+          this.handleAuthError(error);
         },
       });
+  }
+
+  logout(): void {
+    this.authService
+      .logout()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        error: (error) => console.error('Failed to log out', error),
+      });
+  }
+
+  private handleAuthError(error: unknown): void {
+    if (error instanceof HttpErrorResponse && (error.status === 401 || error.status === 403)) {
+      this.authService.handleAuthFailure();
+    }
   }
 
   private blurActiveCreateInput(): void {

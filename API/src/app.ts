@@ -8,6 +8,8 @@ import tabRoutes from './routes/tabs';
 import environmentRoutes from './routes/environments';
 import faviconRoutes from './routes/favicons';
 import searchRoutes from './routes/search';
+import authRoutes from './routes/auth';
+import adminRoutes from './routes/admin';
 
 const app = express();
 const apiRouter = express.Router();
@@ -17,7 +19,7 @@ const configuredOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map((origin) => origin.trim()).filter(Boolean)
   : defaultOrigins;
 
-const allowedHeaders = ['Content-Type', 'x-user-id'];
+const allowedHeaders = ['Content-Type', 'x-user-id', 'Authorization'];
 
 const corsOptions = {
   origin: configuredOrigins.includes('*') ? true : configuredOrigins,
@@ -33,6 +35,7 @@ apiRouter.get('/', (_req: Request, res: Response) => {
   res.send('Welcome to the FlightDeck API!');
 });
 
+apiRouter.use('/auth', authRoutes);
 apiRouter.use('/health', healthRoutes);
 apiRouter.use('/consts', constsRoutes);
 apiRouter.use('/users', userRoutes);
@@ -41,11 +44,16 @@ apiRouter.use('/tabs', tabRoutes);
 apiRouter.use('/environments', environmentRoutes);
 apiRouter.use('/favicons', faviconRoutes);
 apiRouter.use('/search', searchRoutes);
+apiRouter.use('/admin', adminRoutes);
 
 app.use('/api', apiRouter);
 
-app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
-  console.error(err);
+app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
+  if (err instanceof Error) {
+    console.error(`[error] ${req.method} ${req.originalUrl}: ${err.message}`, err.stack);
+  } else {
+    console.error(`[error] ${req.method} ${req.originalUrl}:`, err);
+  }
   res.status(500).json({ error: 'Internal server error' });
 });
 

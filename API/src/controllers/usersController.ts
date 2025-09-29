@@ -199,19 +199,20 @@ async function updateUserDetails(req: UpdateUserRequestHandler, res: StandardRes
   }
 }
 
-async function deleteUser(req: EmptyRequest, res: Response): Promise<void> {
-  const { userId } = req;
+async function deleteUserById(req: Request<{ userId: string }>, res: Response): Promise<void> {
+  const { userId } = req.params;
 
-  if (!userId) {
-    res.status(400).json({ error: 'Missing user context' });
+  if (!userId || !UUID_V4_REGEX.test(userId)) {
+    res.status(400).json({ error: 'Invalid user id' });
     return;
   }
 
   try {
     const existingUser = await querySingle<UserRecord>(
-      'SELECT id, name, createdAt, updatedAt FROM users WHERE id = ?',
+      'SELECT id, name, role, createdAt, updatedAt FROM users WHERE id = ?',
       [userId],
     );
+
     if (!existingUser) {
       res.status(404).json({ error: 'User not found' });
       return;
@@ -329,7 +330,7 @@ export {
   listUsers,
   createUser,
   updateUserDetails,
-  deleteUser,
+  deleteUserById,
   getUserSummary,
   getUserTabGroups,
   getUserWorkspace,

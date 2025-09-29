@@ -1,8 +1,5 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable, of } from 'rxjs';
-import { map, tap } from 'rxjs/operators';
-import { UsersApiService } from './users-api.service';
-import { CreateUserPayload } from '../models';
+import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
 
 const STORAGE_KEY = 'flightdeck_user_id';
 
@@ -16,13 +13,13 @@ export class CurrentUserService {
 
   readonly userId$ = this.userIdSubject.asObservable();
 
-  constructor(private readonly usersApi: UsersApiService) {
+  constructor() {
     if (this.initialQueryUserId) {
       this.persistUserId(this.initialQueryUserId);
     }
   }
 
-  initialize(defaultName: string = 'FlightDeck User'): Observable<string> {
+  initialize(): Observable<string> {
     if (this.initialQueryUserId) {
       return of(this.initialQueryUserId);
     }
@@ -32,11 +29,7 @@ export class CurrentUserService {
       return of(existing);
     }
 
-    const payload: CreateUserPayload = { name: defaultName };
-    return this.usersApi.createUser(payload).pipe(
-      tap((user) => this.persistUserId(user.id)),
-      map((user) => user.id),
-    );
+    return throwError(() => new Error('User id is required. Provide ?userid=... or call setUserId().'));
   }
 
   setUserId(userId: string | null): void {

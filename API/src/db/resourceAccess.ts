@@ -9,6 +9,10 @@ export interface UserRecord extends RowDataPacket {
   updatedAt: Date;
 }
 
+export interface UserAuthRecord extends UserRecord {
+  passwordHash: string | null;
+}
+
 export interface UserTabGroupViewRow extends RowDataPacket {
   userId: string;
   userName: string;
@@ -78,6 +82,13 @@ export async function getUserById(userId: string): Promise<UserRecord | undefine
   return querySingle<UserRecord>(
     'SELECT id, name, role, createdAt, updatedAt FROM users WHERE id = ?',
     [userId],
+  );
+}
+
+export async function getUserWithPasswordByName(name: string): Promise<UserAuthRecord | undefined> {
+  return querySingle<UserAuthRecord>(
+    'SELECT id, name, role, passwordHash, createdAt, updatedAt FROM users WHERE name = ? LIMIT 1',
+    [name],
   );
 }
 
