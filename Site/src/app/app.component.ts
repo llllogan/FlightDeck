@@ -9,8 +9,9 @@ import {
   QueryList,
   ViewChild,
   ViewChildren,
+  inject,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DOCUMENT } from '@angular/common';
 import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin, Observable, Subject, of } from 'rxjs';
@@ -79,6 +80,7 @@ export class AppComponent implements OnInit, AfterViewInit {
   searchError: string | null = null;
   searchActiveTerm = '';
   searchActiveIndex: number | null = null;
+  theme: 'light' | 'dark' = 'light';
   private readonly environmentEmojiMap = new Map<string, string>([
     ['prd', '🟢'],
     ['tst', '🟠'],
@@ -91,6 +93,9 @@ export class AppComponent implements OnInit, AfterViewInit {
   private readonly searchTermTrigger$ = new Subject<{ term: string; context: number }>();
   private userContextVersion = 0;
   private hasFocusedSearchInput = false;
+  private readonly documentRef = inject(DOCUMENT);
+  private readonly themeCookieName = 'flightdeck-theme';
+  private readonly themeCookieMaxAgeDays = 365;
 
   private userId: string | null = null;
 
@@ -106,6 +111,7 @@ export class AppComponent implements OnInit, AfterViewInit {
     private readonly formBuilder: FormBuilder,
     private readonly ngZone: NgZone,
   ) {
+    this.initializeTheme();
     this.initializeSearchStream();
 
     this.currentUser.userId$
@@ -267,6 +273,18 @@ export class AppComponent implements OnInit, AfterViewInit {
     return `tab-search-option-${result.tab.id}`;
   }
 
+  get isDarkMode(): boolean {
+    return this.theme === 'dark';
+  }
+
+  get themeToggleLabel(): string {
+    return this.isDarkMode ? 'Switch to light mode' : 'Switch to dark mode';
+  }
+
+  toggleTheme(): void {
+    this.setTheme(this.isDarkMode ? 'light' : 'dark');
+  }
+
   private initializeSearchStream(): void {
     this.tabSearchControl.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -322,6 +340,59 @@ export class AppComponent implements OnInit, AfterViewInit {
 
   private emitSearchTerm(term: string): void {
     this.searchTermTrigger$.next({ term, context: this.userContextVersion });
+  }
+
+  private initializeTheme(): void {
+    const stored = this.getCookie(this.themeCookieName);
+    let initial: 'light' | 'dark' = 'light';
+
+    if (stored === 'light' || stored === 'dark') {
+      initial = stored;
+    } else if (typeof window !== 'undefined' && window.matchMedia) {
+      initial = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+
+    this.setTheme(initial, false);
+  }
+
+  private setTheme(theme: 'light' | 'dark', persist = true): void {
+    this.theme = theme;
+    const root = this.documentRef?.documentElement;
+
+    if (root) {
+      root.classList.toggle('dark', theme === 'dark');
+      root.setAttribute('data-theme', theme);
+    }
+
+    if (persist) {
+      this.setCookie(this.themeCookieName, theme, this.themeCookieMaxAgeDays);
+    }
+  }
+
+  private setCookie(name: string, value: string, days: number): void {
+    const doc = this.documentRef;
+    if (!doc) {
+      return;
+    }
+
+    const expires = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toUTCString();
+    const encodedValue = encodeURIComponent(value);
+    doc.cookie = `${name}=${encodedValue}; expires=${expires}; path=/; SameSite=Lax`;
+  }
+
+  private getCookie(name: string): string | null {
+    const doc = this.documentRef;
+    if (!doc?.cookie) {
+      return null;
+    }
+
+    const prefix = `${name}=`;
+    const match = doc.cookie.split('; ').find((entry) => entry.startsWith(prefix));
+    if (!match) {
+      return null;
+    }
+
+    return decodeURIComponent(match.substring(prefix.length));
   }
 
   private moveSearchHighlight(offset: number): void {
