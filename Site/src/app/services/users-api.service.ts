@@ -16,8 +16,13 @@ export class UsersApiService {
 
   constructor(private readonly http: HttpClient) {}
 
-  createUser(payload: CreateUserPayload): Observable<ApiUser> {
-    return this.http.post<ApiUser>(this.baseUrl, payload);
+  listUsers(): Observable<ApiUser[]> {
+    return this.http.get<ApiUser[]>(this.baseUrl);
+  }
+
+  createUser(payload: CreateUserPayload, adminPassword?: string): Observable<ApiUser> {
+    const headers = adminPassword ? new HttpHeaders({ 'x-admin-password': adminPassword }) : undefined;
+    return this.http.post<ApiUser>(this.baseUrl, payload, { headers });
   }
 
   deleteUser(userId: string): Observable<void> {
