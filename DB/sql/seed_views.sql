@@ -27,6 +27,31 @@ FROM tabs t
 INNER JOIN tabgroups tg ON tg.id = t.tabGroupId
 INNER JOIN users u ON u.id = tg.userId;
 
+DROP VIEW IF EXISTS tab_search_view;
+CREATE OR REPLACE VIEW tab_search_view AS
+SELECT
+    t.id        AS tabId,
+    t.title     AS tabTitle,
+    t.sortOrder AS tabSortOrder,
+    t.createdAt AS tabCreatedAt,
+    t.updatedAt AS tabUpdatedAt,
+    tg.id       AS tabGroupId,
+    tg.title    AS tabGroupTitle,
+    tg.sortOrder AS tabGroupSortOrder,
+    tg.createdAt AS tabGroupCreatedAt,
+    tg.updatedAt AS tabGroupUpdatedAt,
+    u.id        AS userId,
+    u.name      AS userName,
+    e.id        AS environmentId,
+    e.name      AS environmentName,
+    e.url       AS environmentUrl,
+    e.createdAt AS environmentCreatedAt,
+    e.updatedAt AS environmentUpdatedAt
+FROM tabs t
+INNER JOIN tabgroups tg ON tg.id = t.tabGroupId
+INNER JOIN users u ON u.id = tg.userId
+LEFT JOIN environments e ON e.tabId = t.id;
+
 DROP VIEW IF EXISTS environment_detail_view;
 CREATE OR REPLACE VIEW environment_detail_view AS
 SELECT

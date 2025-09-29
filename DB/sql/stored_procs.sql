@@ -219,6 +219,79 @@ BEGIN
     END IF;
 END $$
 
+DROP PROCEDURE IF EXISTS search_user_tabs $$
+CREATE PROCEDURE search_user_tabs (
+    IN p_user_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    IN p_query   VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+)
+BEGIN
+    DECLARE sanitized_query VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    DECLARE like_pattern VARCHAR(515) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+    SET sanitized_query = TRIM(COALESCE(p_query, ''));
+
+    IF sanitized_query = '' THEN
+        SELECT
+            userId,
+            tabId,
+            tabTitle,
+            tabSortOrder,
+            tabCreatedAt,
+            tabUpdatedAt,
+            tabGroupId,
+            tabGroupTitle,
+            tabGroupSortOrder,
+            tabGroupCreatedAt,
+            tabGroupUpdatedAt,
+            environmentId,
+            environmentName,
+            environmentUrl,
+            environmentCreatedAt,
+            environmentUpdatedAt
+        FROM tab_search_view
+        WHERE 1 = 0;
+    ELSE
+        SET like_pattern = REPLACE(sanitized_query, '\\', '\\\\');
+        SET like_pattern = REPLACE(like_pattern, '%', '\\%');
+        SET like_pattern = REPLACE(like_pattern, '_', '\\_');
+        SET like_pattern = CONCAT('%', like_pattern, '%');
+
+        SELECT
+            userId,
+            tabId,
+            tabTitle,
+            tabSortOrder,
+            tabCreatedAt,
+            tabUpdatedAt,
+            tabGroupId,
+            tabGroupTitle,
+            tabGroupSortOrder,
+            tabGroupCreatedAt,
+            tabGroupUpdatedAt,
+            environmentId,
+            environmentName,
+            environmentUrl,
+            environmentCreatedAt,
+            environmentUpdatedAt
+        FROM tab_search_view
+        WHERE userId = p_user_id
+          AND (
+              tabTitle LIKE like_pattern COLLATE utf8mb4_unicode_ci ESCAPE '\\'
+              OR (
+                  environmentUrl IS NOT NULL
+                  AND environmentUrl LIKE like_pattern COLLATE utf8mb4_unicode_ci ESCAPE '\\'
+              )
+          )
+        ORDER BY
+            tabGroupSortOrder ASC,
+            tabGroupCreatedAt ASC,
+            tabSortOrder ASC,
+            tabCreatedAt ASC,
+            tabId ASC,
+            environmentCreatedAt ASC;
+    END IF;
+END $$
+
 DROP PROCEDURE IF EXISTS delete_user $$
 CREATE PROCEDURE delete_user (
     IN p_user_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
