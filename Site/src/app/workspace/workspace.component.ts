@@ -191,8 +191,7 @@ export class WorkspaceComponent implements OnInit, AfterViewInit {
 
         if (!this.searchResults.length) {
           event.preventDefault();
-          const encoded = encodeURIComponent(term);
-          window.open(`https://www.google.com/search?q=${encoded}`, '_blank', 'noopener');
+          this.launchFallbackSearch(term);
         }
         break;
       }
@@ -283,6 +282,20 @@ export class WorkspaceComponent implements OnInit, AfterViewInit {
 
   toggleTheme(): void {
     this.setTheme(this.isDarkMode ? 'light' : 'dark');
+  }
+
+  private launchFallbackSearch(term: string): void {
+    const normalized = term.trim();
+    if (!normalized) {
+      return;
+    }
+
+    const hasProtocol = /^https?:\/\//i.test(normalized);
+    const targetUrl = hasProtocol
+      ? normalized
+      : `https://www.google.com/search?q=${encodeURIComponent(normalized)}`;
+
+    window.open(targetUrl, '_blank', 'noopener');
   }
 
   private initializeSearchStream(): void {
