@@ -190,6 +190,36 @@ export class AppComponent implements OnInit, AfterViewInit {
         }
         break;
       }
+      case '1':
+      case '2':
+      case '3':
+      case '4':
+      case '5':
+      case '6':
+      case '7':
+      case '8':
+      case '9': {
+        if (this.searchActiveIndex === null) {
+          return;
+        }
+
+        const result = this.searchResults[this.searchActiveIndex];
+        if (!result) {
+          return;
+        }
+
+        const environmentIndex = parseInt(event.key, 10) - 1;
+        if (environmentIndex < 0) {
+          return;
+        }
+
+        const environment = result.environments[environmentIndex];
+        if (environment?.url) {
+          event.preventDefault();
+          this.openEnvironment(environment);
+        }
+        break;
+      }
       default:
         break;
     }
