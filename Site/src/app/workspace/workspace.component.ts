@@ -725,7 +725,7 @@ export class WorkspaceComponent implements OnInit, AfterViewInit {
       });
   }
 
-  getFavicon(url: string): string | null {
+  getFavicon(url: string, fallbackLabel?: string): string | null {
     if (!url) {
       return null;
     }
@@ -735,7 +735,11 @@ export class WorkspaceComponent implements OnInit, AfterViewInit {
       // Validate URL parsing
       new URL(normalized);
       const apiBase = appEnvironment.apiBaseUrl?.replace(/\/$/, '') ?? '';
-      return `${apiBase}/favicons?url=${encodeURIComponent(normalized)}`;
+      const params = new URLSearchParams({ url: normalized });
+      if (fallbackLabel) {
+        params.set('fallback', fallbackLabel);
+      }
+      return `${apiBase}/favicons?${params.toString()}`;
     } catch {
       return null;
     }
@@ -1314,20 +1318,27 @@ export class WorkspaceComponent implements OnInit, AfterViewInit {
                 createdAt: group.createdAt,
                 updatedAt: group.updatedAt,
               },
-              tabs: sortedTabs.map((tab) => ({
-                tab: {
-                  id: tab.id,
-                  title: tab.title,
-                  sortOrder: tab.sortOrder,
-                  createdAt: tab.createdAt,
-                  updatedAt: tab.updatedAt,
-                },
-                environments: tab.environments,
-                primaryEnvironment: this.getPrimaryEnvironment(tab.environments),
-                faviconUrl: this.faviconErrorTabIds.has(tab.id)
-                  ? null
-                  : this.getFavicon(this.getPrimaryEnvironment(tab.environments)?.url ?? ''),
-              })),
+              tabs: sortedTabs.map((tab) => {
+                const primaryEnvironment = this.getPrimaryEnvironment(tab.environments);
+                const monogram = this.getMonogram(tab.title);
+
+                if (this.faviconErrorTabIds.has(tab.id)) {
+                  this.faviconErrorTabIds.delete(tab.id);
+                }
+
+                return {
+                  tab: {
+                    id: tab.id,
+                    title: tab.title,
+                    sortOrder: tab.sortOrder,
+                    createdAt: tab.createdAt,
+                    updatedAt: tab.updatedAt,
+                  },
+                  environments: tab.environments,
+                  primaryEnvironment,
+                  faviconUrl: this.getFavicon(primaryEnvironment?.url ?? '', monogram),
+                };
+              }),
             };
           });
 
