@@ -14,6 +14,7 @@ import type {
   RenameTabGroupRequest,
 } from '../models/requestBodies';
 import { isCompleteTabGroupRow, serializeTab, serializeTabGroup, serializeTabGroupSummary } from '../serializers';
+import { sanitizeTextInput } from '../utils/sanitizers';
 
 type SerializedTabGroup = ReturnType<typeof serializeTabGroup>;
 type SerializedTabGroupSummary = ReturnType<typeof serializeTabGroupSummary>;
@@ -86,9 +87,9 @@ async function createTabGroup(req: CreateRequest, res: Response): Promise<void> 
     return;
   }
 
-  const { title } = req.body;
+  const sanitizedTitle = sanitizeTextInput(req.body?.title);
 
-  if (!title || typeof title !== 'string' || !title.trim()) {
+  if (!sanitizedTitle) {
     res.status(400).json({ error: 'Title is required' });
     return;
   }
@@ -100,7 +101,6 @@ async function createTabGroup(req: CreateRequest, res: Response): Promise<void> 
       return;
     }
 
-    const sanitizedTitle = title.trim();
     await callStoredProcedure('create_tab_group', [userId, sanitizedTitle]);
     const createdGroup = await getLatestTabGroupForUser(userId);
 
@@ -127,9 +127,9 @@ async function renameTabGroup(req: RenameRequest, res: Response): Promise<void> 
   if (!tabGroup) {
     return;
   }
-  const { title } = req.body;
+  const sanitizedTitle = sanitizeTextInput(req.body?.title);
 
-  if (!title || typeof title !== 'string' || !title.trim()) {
+  if (!sanitizedTitle) {
     res.status(400).json({ error: 'Title is required' });
     return;
   }
@@ -142,7 +142,7 @@ async function renameTabGroup(req: RenameRequest, res: Response): Promise<void> 
       return;
     }
 
-    await callStoredProcedure('rename_tab_group', [tabGroupId, title.trim()]);
+    await callStoredProcedure('rename_tab_group', [tabGroupId, sanitizedTitle]);
     const updated = await getTabGroupById(tabGroupId);
 
     if (!updated || !isCompleteTabGroupRow(updated)) {

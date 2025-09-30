@@ -20,6 +20,7 @@ import {
   serializeUserSummary,
   type UserSummaryRow as UserSummaryRowData,
 } from '../serializers';
+import { sanitizeOptionalTextInput, sanitizeTextInput } from '../utils/sanitizers';
 
 type CreateUserRequestHandler = Request<Record<string, never>, unknown, Partial<CreateUserRequest>>;
 type UpdateUserRequestHandler = Request<{ userId: string }, Record<string, never>, Partial<UpdateUserRequest>>;
@@ -74,33 +75,42 @@ async function listUsers(_req: EmptyRequest, res: UsersResponse): Promise<void> 
 async function createUser(req: CreateUserRequestHandler, res: StandardResponse): Promise<void> {
   const { name, role, password } = req.body;
 
-  if (!name || typeof name !== 'string' || !name.trim()) {
+  const sanitizedName = sanitizeTextInput(name);
+
+  if (!sanitizedName) {
     res.status(400).json({ error: 'Name is required' });
     return;
   }
 
-  try {
-    const sanitizedName = name.trim();
-    const sanitizedRole =
-      typeof role === 'string'
-        ? role.trim() || null
-        : role === null
-          ? null
-          : undefined;
-
-    if (sanitizedRole === undefined && role !== undefined) {
-      res.status(400).json({ error: 'Role must be a string or null.' });
+  let sanitizedRole: string | null | undefined;
+  if (role === undefined) {
+    sanitizedRole = undefined;
+  } else if (role === null) {
+    sanitizedRole = null;
+  } else if (typeof role === 'string') {
+    const normalizedRole = sanitizeOptionalTextInput(role);
+    if (normalizedRole === null && !role.trim()) {
+      sanitizedRole = null;
+    } else if (normalizedRole === null) {
+      res.status(400).json({ error: 'Role must be a non-empty string or null.' });
       return;
+    } else {
+      sanitizedRole = normalizedRole;
     }
+  } else {
+    res.status(400).json({ error: 'Role must be a string or null.' });
+    return;
+  }
 
+  try {
     let passwordHash: string | null = null;
     if (typeof password === 'string') {
-      const trimmedPassword = password.trim();
-      if (!trimmedPassword) {
+      const sanitizedPassword = sanitizeTextInput(password, { maxLength: 128 });
+      if (!sanitizedPassword) {
         res.status(400).json({ error: 'Password cannot be empty.' });
         return;
       }
-      passwordHash = await hashPassword(trimmedPassword, 10);
+      passwordHash = await hashPassword(sanitizedPassword, 10);
     } else if (password === null) {
       passwordHash = null;
     } else if (password !== undefined) {
@@ -147,12 +157,12 @@ async function updateUserDetails(req: UpdateUserRequestHandler, res: StandardRes
 
   let sanitizedName: string | undefined;
   if (hasName) {
-    const value = body.name;
-    if (typeof value !== 'string' || !value.trim()) {
+    const sanitized = sanitizeTextInput(body.name);
+    if (!sanitized) {
       res.status(400).json({ error: 'Name must be a non-empty string.' });
       return;
     }
-    sanitizedName = value.trim();
+    sanitizedName = sanitized;
   }
 
   let sanitizedRole: string | null | undefined;
@@ -161,7 +171,12 @@ async function updateUserDetails(req: UpdateUserRequestHandler, res: StandardRes
     if (value === null) {
       sanitizedRole = null;
     } else if (typeof value === 'string') {
-      sanitizedRole = value.trim() || null;
+      const normalizedRole = sanitizeOptionalTextInput(value);
+      if (normalizedRole === null && value.trim()) {
+        res.status(400).json({ error: 'Role must be a non-empty string or null.' });
+        return;
+      }
+      sanitizedRole = normalizedRole;
     } else {
       res.status(400).json({ error: 'Role must be a string or null.' });
       return;
@@ -174,12 +189,12 @@ async function updateUserDetails(req: UpdateUserRequestHandler, res: StandardRes
     if (value === null) {
       passwordHash = null;
     } else if (typeof value === 'string') {
-      const trimmed = value.trim();
-      if (!trimmed) {
+      const sanitizedPassword = sanitizeTextInput(value, { maxLength: 128 });
+      if (!sanitizedPassword) {
         res.status(400).json({ error: 'Password cannot be empty.' });
         return;
       }
-      passwordHash = await hashPassword(trimmed, 10);
+      passwordHash = await hashPassword(sanitizedPassword, 10);
     } else {
       res.status(400).json({ error: 'Password must be a string or null.' });
       return;

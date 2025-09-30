@@ -1,12 +1,9 @@
 import { Request, Response } from 'express';
 import { callStoredProcedure } from '../db/helpers';
-import {
-  getTabById,
-  getLatestTabForGroup,
-  getLatestEnvironmentForTab,
-} from '../db/resourceAccess';
+import { getTabById, getLatestTabForGroup, getLatestEnvironmentForTab } from '../db/resourceAccess';
 import type { CreateTabRequest, MoveTabRequest, RenameTabRequest } from '../models/requestBodies';
 import { serializeEnvironment, serializeTab } from '../serializers';
+import { sanitizeTextInput } from '../utils/sanitizers';
 
 type SerializedTab = ReturnType<typeof serializeTab>;
 type SerializedEnvironment = ReturnType<typeof serializeEnvironment>;
@@ -49,12 +46,14 @@ async function createTab(req: CreateRequest, res: Response): Promise<void> {
   if (!tabGroup) {
     return;
   }
-  const { title, environment } = req.body;
+  const sanitizedTitle = sanitizeTextInput(req.body?.title);
 
-  if (!title || typeof title !== 'string' || !title.trim()) {
+  if (!sanitizedTitle) {
     res.status(400).json({ error: 'Title is required' });
     return;
   }
+
+  const environment = req.body?.environment;
 
   if (!environment || typeof environment !== 'object') {
     res.status(400).json({ error: 'environment payload is required' });
@@ -62,13 +61,16 @@ async function createTab(req: CreateRequest, res: Response): Promise<void> {
   }
 
   const { name, url } = environment;
+  const sanitizedName = sanitizeTextInput(name);
 
-  if (!name || typeof name !== 'string' || !name.trim()) {
+  if (!sanitizedName) {
     res.status(400).json({ error: 'Environment name is required' });
     return;
   }
 
-  if (!url || typeof url !== 'string' || !url.trim()) {
+  const sanitizedUrl = sanitizeTextInput(url, { maxLength: 2048 });
+
+  if (!sanitizedUrl) {
     res.status(400).json({ error: 'Environment url is required' });
     return;
   }
@@ -80,10 +82,6 @@ async function createTab(req: CreateRequest, res: Response): Promise<void> {
       res.status(500).json({ error: 'Tab group record is missing an identifier' });
       return;
     }
-
-    const sanitizedTitle = title.trim();
-    const sanitizedName = name.trim();
-    const sanitizedUrl = url.trim();
 
     await callStoredProcedure('create_tab', [resolvedTabGroupId, sanitizedTitle]);
     const createdTab = await getLatestTabForGroup(resolvedTabGroupId);
@@ -116,15 +114,15 @@ async function renameTab(req: RenameRequest, res: Response): Promise<void> {
   if (!tab) {
     return;
   }
-  const { title } = req.body;
+  const sanitizedTitle = sanitizeTextInput(req.body?.title);
 
-  if (!title || typeof title !== 'string' || !title.trim()) {
+  if (!sanitizedTitle) {
     res.status(400).json({ error: 'Title is required' });
     return;
   }
 
   try {
-    await callStoredProcedure('rename_tab', [tab.tabId, title.trim()]);
+    await callStoredProcedure('rename_tab', [tab.tabId, sanitizedTitle]);
     const updated = await getTabById(tab.tabId);
 
     if (!updated) {

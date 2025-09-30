@@ -16,6 +16,7 @@ import {
   findRefreshToken,
   saveRefreshToken,
 } from '../db/refreshTokens';
+import { sanitizeTextInput } from '../utils/sanitizers';
 
 interface LoginRequestBody {
   name?: string;
@@ -42,29 +43,9 @@ type AuthResponse = Response<AuthSuccessResponse | AuthErrorResponse>;
 
 type LogoutResponse = Response<{ success: true } | AuthErrorResponse>;
 
-function sanitizeName(name?: string): string | null {
-  if (typeof name !== 'string') {
-    return null;
-  }
-  const trimmed = name.trim();
-  return trimmed ? trimmed : null;
-}
-
-function sanitizePassword(password?: string): string | null {
-  if (typeof password !== 'string') {
-    return null;
-  }
-  const trimmed = password.trim();
-  return trimmed ? trimmed : null;
-}
-
-function sanitizeRefreshToken(token?: string): string | null {
-  if (typeof token !== 'string') {
-    return null;
-  }
-  const trimmed = token.trim();
-  return trimmed ? trimmed : null;
-}
+const sanitizeName = (name?: string) => sanitizeTextInput(name);
+const sanitizePassword = (password?: string) => sanitizeTextInput(password, { maxLength: 128 });
+const sanitizeRefreshToken = (token?: string) => sanitizeTextInput(token, { maxLength: 512 });
 
 async function withRefreshTable<T>(operation: () => Promise<T>): Promise<T> {
   await ensureRefreshTokenTable();

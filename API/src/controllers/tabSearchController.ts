@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import type { ParsedQs } from 'qs';
 import { searchTabsForUser, type TabSearchViewRow } from '../db/resourceAccess';
+import { sanitizeTextInput } from '../utils/sanitizers';
 
 interface TabSearchEnvironment {
   id: string;
@@ -98,7 +99,7 @@ async function searchTabs(req: Request, res: SearchTabsResponse): Promise<void> 
   }
 
   const queryParam = normalizeQuery(req.query.q);
-  const sanitizedTerm = queryParam.trim();
+  const sanitizedTerm = sanitizeTextInput(queryParam);
 
   if (!sanitizedTerm) {
     res.json([]);

@@ -1,15 +1,12 @@
 import { Request, Response } from 'express';
 import { callStoredProcedure } from '../db/helpers';
-import {
-  getEnvironmentById,
-  getLatestEnvironmentForTab,
-  listEnvironmentsForTab,
-} from '../db/resourceAccess';
+import { getEnvironmentById, getLatestEnvironmentForTab, listEnvironmentsForTab } from '../db/resourceAccess';
 import type {
   CreateEnvironmentRequest,
   UpdateEnvironmentRequest,
 } from '../models/requestBodies';
 import { serializeEnvironment } from '../serializers';
+import { sanitizeTextInput } from '../utils/sanitizers';
 
 type SerializedEnvironment = ReturnType<typeof serializeEnvironment>;
 
@@ -72,22 +69,21 @@ async function createEnvironment(req: CreateRequest, res: Response): Promise<voi
   if (!tab) {
     return;
   }
-  const { name, url } = req.body;
+  const sanitizedName = sanitizeTextInput(req.body?.name);
 
-  if (!name || typeof name !== 'string' || !name.trim()) {
+  if (!sanitizedName) {
     res.status(400).json({ error: 'Name is required' });
     return;
   }
 
-  if (!url || typeof url !== 'string' || !url.trim()) {
+  const sanitizedUrl = sanitizeTextInput(req.body?.url, { maxLength: 2048 });
+
+  if (!sanitizedUrl) {
     res.status(400).json({ error: 'URL is required' });
     return;
   }
 
   try {
-    const sanitizedName = name.trim();
-    const sanitizedUrl = url.trim();
-
     await callStoredProcedure('create_environment', [tab.tabId, sanitizedName, sanitizedUrl]);
     const created = await getLatestEnvironmentForTab(tab.tabId);
 
@@ -109,22 +105,21 @@ async function updateEnvironment(req: UpdateRequest, res: Response): Promise<voi
   if (!environment) {
     return;
   }
-  const { name, url } = req.body;
+  const sanitizedName = sanitizeTextInput(req.body?.name);
 
-  if (!name || typeof name !== 'string' || !name.trim()) {
+  if (!sanitizedName) {
     res.status(400).json({ error: 'Name is required' });
     return;
   }
 
-  if (!url || typeof url !== 'string' || !url.trim()) {
+  const sanitizedUrl = sanitizeTextInput(req.body?.url, { maxLength: 2048 });
+
+  if (!sanitizedUrl) {
     res.status(400).json({ error: 'URL is required' });
     return;
   }
 
   try {
-    const sanitizedName = name.trim();
-    const sanitizedUrl = url.trim();
-
     await callStoredProcedure('update_environment', [environment.environmentId, sanitizedName, sanitizedUrl]);
     const updated = await getEnvironmentById(environment.environmentId);
 
