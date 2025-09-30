@@ -3,7 +3,7 @@ import { applyRuntimeOverrides, type EnvironmentConfig } from './environment.run
 const baseEnvironment: EnvironmentConfig = {
   production: false,
   apiBaseUrl: 'http://localhost:3000/api',
-  version: '0.0.1',
+  version: '0.0.2',
 };
 
 export const environment = applyRuntimeOverrides(baseEnvironment);
