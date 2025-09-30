@@ -290,10 +290,18 @@ export class WorkspaceComponent implements OnInit, AfterViewInit {
       return;
     }
 
-    const hasProtocol = /^https?:\/\//i.test(normalized);
-    const targetUrl = hasProtocol
-      ? normalized
-      : `https://www.google.com/search?q=${encodeURIComponent(normalized)}`;
+    const hasHttpProtocol = /^https?:\/\//i.test(normalized);
+    const hasAnyProtocol = /^[a-z][a-z\d+\-.]*:\/\//i.test(normalized);
+    const containsDotCom = /\.com\b/i.test(normalized);
+
+    let targetUrl: string;
+    if (hasHttpProtocol) {
+      targetUrl = normalized;
+    } else if (containsDotCom) {
+      targetUrl = hasAnyProtocol ? normalized : `https://${normalized}`;
+    } else {
+      targetUrl = `https://www.google.com/search?q=${encodeURIComponent(normalized)}`;
+    }
 
     window.open(targetUrl, '_blank', 'noopener');
   }
