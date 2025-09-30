@@ -1,6 +1,7 @@
 type EnvironmentConfig = {
   production: boolean;
   apiBaseUrl: string;
+  version: string;
 };
 
 declare global {

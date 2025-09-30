@@ -81,6 +81,7 @@ export class WorkspaceComponent implements OnInit, AfterViewInit {
   searchActiveTerm = '';
   searchActiveIndex: number | null = null;
   theme: 'light' | 'dark' = 'light';
+  readonly appVersion = appEnvironment.version;
   private readonly environmentEmojiMap = new Map<string, string>([
     ['prd', '🟢'],
     ['tst', '🟠'],
