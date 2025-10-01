@@ -1,22 +1,17 @@
-import { Request, Response } from 'express';
+import type { Request, Response } from 'express';
 import { callStoredProcedure } from '../db/helpers';
 import { getTabById, getLatestTabForGroup, getLatestEnvironmentForTab } from '../db/resourceAccess';
 import type { CreateTabRequest, MoveTabRequest, RenameTabRequest } from '../models/requestBodies';
 import { serializeEnvironment, serializeTab } from '../serializers';
 import { sanitizeTextInput } from '../utils/sanitizers';
-
-type SerializedTab = ReturnType<typeof serializeTab>;
-type SerializedEnvironment = ReturnType<typeof serializeEnvironment>;
-
-type CreateRequest = Request<Record<string, never>, unknown, Partial<CreateTabRequest>>;
-
-type TabParams = { tabId: string };
-
-type RenameRequest = Request<TabParams, unknown, Partial<RenameTabRequest>>;
-
-type DeleteRequest = Request<TabParams>;
-
-type MoveRequest = Request<TabParams, unknown, Partial<MoveTabRequest>>;
+import type {
+  CreateRequest,
+  DeleteRequest,
+  MoveRequest,
+  RenameRequest,
+  SerializedEnvironment,
+  SerializedTab,
+} from '../types/controllers/tabs';
 
 function ensureTabGroupContext(req: Request, res: Response) {
   const tabGroup = req.tabGroup;

@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import type { Request, Response } from 'express';
 import { hash as hashPassword } from 'bcryptjs';
 import { callStoredProcedure, fetchSingleFromProcedure } from '../db/helpers';
 import type { CreateUserRequest, UpdateUserRequest } from '../models/requestBodies';
@@ -22,33 +22,16 @@ import {
   type UserSummaryRow as UserSummaryRowData,
 } from '../serializers';
 import { sanitizeOptionalTextInput, sanitizeTextInput } from '../utils/sanitizers';
-
-type CreateUserRequestHandler = Request<Record<string, never>, unknown, Partial<CreateUserRequest>>;
-type UpdateUserRequestHandler = Request<{ userId: string }, Record<string, never>, Partial<UpdateUserRequest>>;
-
-type EmptyRequest = Request;
-
-type SerializedUserSummary = ReturnType<typeof serializeUserSummary>;
-type SerializedTabGroup = ReturnType<typeof serializeTabGroup>;
-type SerializedTab = ReturnType<typeof serializeTab>;
-type SerializedEnvironment = ReturnType<typeof serializeEnvironment>;
-
-type WorkspaceTab = SerializedTab & { environments: SerializedEnvironment[] };
-type WorkspaceTabGroup = SerializedTabGroup & { tabs: WorkspaceTab[] };
-type WorkspacePayload = {
-  summary: SerializedUserSummary | null;
-  tabGroups: WorkspaceTabGroup[];
-};
-type WorkspaceResponse = Response<WorkspacePayload | { error: string }>;
-
-type SummaryResponse = Response<SerializedUserSummary | { error: string }>;
-
-type TabGroupsResponse = Response<SerializedTabGroup[] | { error: string }>;
-
-type SerializedUser = ReturnType<typeof serializeUser>;
-type StandardResponse = Response<SerializedUser | Record<string, unknown>>;
-
-type UsersResponse = Response<SerializedUser[] | { error: string }>;
+import type {
+  CreateUserRequestHandler,
+  UpdateUserRequestHandler,
+  EmptyRequest,
+  UsersResponse,
+  StandardResponse,
+  SummaryResponse,
+  TabGroupsResponse,
+  WorkspaceResponse,
+} from '../types/controllers/users';
 
 const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 

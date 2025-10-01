@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import type { Request, Response } from 'express';
 import { callStoredProcedure } from '../db/helpers';
 import {
   getUserById,
@@ -15,30 +15,16 @@ import type {
 } from '../models/requestBodies';
 import { isCompleteTabGroupRow, serializeTab, serializeTabGroup, serializeTabGroupSummary } from '../serializers';
 import { sanitizeTextInput } from '../utils/sanitizers';
-
-type SerializedTabGroup = ReturnType<typeof serializeTabGroup>;
-type SerializedTabGroupSummary = ReturnType<typeof serializeTabGroupSummary>;
-type SerializedTab = ReturnType<typeof serializeTab>;
-
-type ListResponse = Response<SerializedTabGroup[] | { error: string }>;
-
-type SummaryResponse = Response<SerializedTabGroupSummary[] | { error: string }>;
-
-type TabsByGroupResponse = Response<SerializedTab[] | { error: string }>;
-
-type CreateRequest = Request<Record<string, never>, unknown, Partial<CreateTabGroupRequest>>;
-
-type RenameParams = { tabGroupId: string };
-
-type RenameRequest = Request<RenameParams, unknown, Partial<RenameTabGroupRequest>>;
-
-type DeleteRequest = Request<RenameParams>;
-
-type MoveRequest = Request<RenameParams, unknown, Partial<MoveTabGroupRequest>>;
-
-type TabsRequestParams = { tabGroupId: string };
-
-type TabsRequest = Request<TabsRequestParams>;
+import type {
+  CreateRequest,
+  DeleteRequest,
+  ListResponse,
+  MoveRequest,
+  RenameRequest,
+  SummaryResponse,
+  TabsByGroupResponse,
+  TabsRequest,
+} from '../types/controllers/tabGroups';
 
 function ensureUserContext(req: Request, res: Response): string | null {
   const userId = req.userId;

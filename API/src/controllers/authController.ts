@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import type { Request, Response } from 'express';
 import { compare } from 'bcryptjs';
 import {
   getUserById as getUserByIdFromDb,
@@ -24,25 +24,13 @@ import {
   setAccessCookie,
   setRefreshCookie,
 } from '../utils/authCookies';
-
-interface LoginRequestBody {
-  name?: string;
-  password?: string;
-}
-
-type AuthSessionResponse = {
-  user: {
-    id: string;
-    name: string;
-    role: string | null;
-  };
-  accessTokenExpiresAt?: string;
-  refreshTokenExpiresAt?: string;
-};
-
-type AuthErrorResponse = { error: string };
-type AuthResponse = Response<AuthSessionResponse | AuthErrorResponse>;
-type LogoutResponse = Response<{ success: true } | AuthErrorResponse>;
+import type {
+  AuthErrorResponse,
+  AuthResponse,
+  AuthSessionResponse,
+  LoginRequest,
+  LogoutResponse,
+} from '../types/controllers/auth';
 
 const sanitizeName = (name?: string) => sanitizeTextInput(name);
 const sanitizePassword = (password?: string) => sanitizeTextInput(password, { maxLength: 128 });
@@ -73,10 +61,7 @@ function respondWithInvalidRefresh(res: Response<AuthErrorResponse>, message: st
   res.status(401).json({ error: message });
 }
 
-export async function login(
-  req: Request<unknown, unknown, LoginRequestBody>,
-  res: AuthResponse,
-): Promise<void> {
+export async function login(req: LoginRequest, res: AuthResponse): Promise<void> {
   const sanitizedName = sanitizeName(req.body?.name);
   const sanitizedPassword = sanitizePassword(req.body?.password);
 

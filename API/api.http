@@ -23,8 +23,8 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "name": "Logan",
-  "password": "google"
+  "name": "logan",
+  "password": ""
 }
 
 ### Refresh Access Token
