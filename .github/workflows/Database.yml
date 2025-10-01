@@ -1,11 +1,81 @@
 name: Deploy Database Schema
 
 on:
+  push:
+    paths:
+      - 'DB/**'
   workflow_dispatch:
 
 jobs:
-  migrate-and-seed:
+  migrate-and-seed-test:
+    name: Migrate and seed (test)
     runs-on: self-hosted
+    environment:
+      name: test
+    env:
+      DATABASE_URL: mysql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@${{ secrets.DB_HOST }}:${{ secrets.DB_PORT }}/${{ secrets.DB_NAME }}
+    defaults:
+      run:
+        working-directory: DB
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run Prisma migrations
+        run: npx prisma generate --schema=prisma/schema.prisma
+
+      - name: Generate diff-based migration
+        run: |
+          ts=$(date +%s)_ci
+          dir="prisma/migrations/$ts"
+          mkdir -p "$dir"
+          echo "Writing diff migration to $dir/migration.sql"
+          # --- generate SQL (empty exit 0) --------------------------
+          npx prisma migrate diff \
+            --from-url="$DATABASE_URL" \
+            --to-schema-datamodel=prisma/schema.prisma \
+            --script > "$dir/migration.sql"
+          # --- drop the folder if SQL is empty ----------------------
+          if [ ! -s "$dir/migration.sql" ]; then
+            echo "No schema difference - removing empty migration."
+            rm -rf "$dir"
+          fi
+
+      - name: Deploy migrations
+        run: npx prisma migrate deploy
+
+      - name: Seed views
+        env:
+          MYSQL_PWD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          mysql \
+            --host="${{ secrets.DB_HOST }}" \
+            --port="${{ secrets.DB_PORT }}" \
+            --user="${{ secrets.DB_USER }}" \
+            "${{ secrets.DB_NAME }}" < sql/seed_views.sql
+
+      - name: Seed stored procedures
+        env:
+          MYSQL_PWD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          mysql \
+            --host="${{ secrets.DB_HOST }}" \
+            --port="${{ secrets.DB_PORT }}" \
+            --user="${{ secrets.DB_USER }}" \
+            "${{ secrets.DB_NAME }}" < sql/stored_procs.sql
+
+  migrate-and-seed-prod:
+    name: Migrate and seed (prod)
+    runs-on: self-hosted
+    needs: migrate-and-seed-test
+    if: github.ref == 'refs/heads/master'
+    environment:
+      name: production
     env:
       DATABASE_URL: mysql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@${{ secrets.DB_HOST }}:${{ secrets.DB_PORT }}/${{ secrets.DB_NAME }}
     defaults:
