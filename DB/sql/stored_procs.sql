@@ -9,12 +9,19 @@ CREATE PROCEDURE create_user (
 BEGIN
     DECLARE v_role VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
     DECLARE v_password_hash VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    DECLARE v_new_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
     SET v_role = NULLIF(TRIM(p_role), '');
     SET v_password_hash = NULLIF(p_password_hash, '');
+    SET v_new_id = UUID();
 
     INSERT INTO users (id, name, role, passwordHash, createdAt, updatedAt)
-    VALUES (UUID(), p_name, v_role, v_password_hash, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+    VALUES (v_new_id, p_name, v_role, v_password_hash, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
+    SELECT id, name, role, createdAt, updatedAt
+      FROM users
+     WHERE id = v_new_id
+     LIMIT 1;
 END $$
 
 DROP PROCEDURE IF EXISTS update_user $$
@@ -326,6 +333,248 @@ BEGIN
             tabId ASC,
             environmentCreatedAt ASC;
     END IF;
+END $$
+
+DROP PROCEDURE IF EXISTS get_user_by_id $$
+CREATE PROCEDURE get_user_by_id (
+    IN p_user_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+)
+BEGIN
+    SELECT id,
+           name,
+           role,
+           createdAt,
+           updatedAt
+      FROM users
+     WHERE id = p_user_id
+     LIMIT 1;
+END $$
+
+DROP PROCEDURE IF EXISTS get_user_with_password_by_name $$
+CREATE PROCEDURE get_user_with_password_by_name (
+    IN p_name VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+)
+BEGIN
+    SELECT id,
+           name,
+           role,
+           passwordHash,
+           createdAt,
+           updatedAt
+      FROM users
+     WHERE name = p_name
+     ORDER BY createdAt DESC
+     LIMIT 1;
+END $$
+
+DROP PROCEDURE IF EXISTS get_user_by_name $$
+CREATE PROCEDURE get_user_by_name (
+    IN p_name VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+)
+BEGIN
+    SELECT id,
+           name,
+           role,
+           createdAt,
+           updatedAt
+      FROM users
+     WHERE name = p_name
+     ORDER BY createdAt DESC
+     LIMIT 1;
+END $$
+
+DROP PROCEDURE IF EXISTS list_users $$
+CREATE PROCEDURE list_users ()
+BEGIN
+    SELECT id,
+           name,
+           role,
+           createdAt,
+           updatedAt
+      FROM users
+     ORDER BY createdAt ASC;
+END $$
+
+DROP PROCEDURE IF EXISTS get_user_summary $$
+CREATE PROCEDURE get_user_summary (
+    IN p_user_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+)
+BEGIN
+    SELECT *
+      FROM user_hierarchy_summary_view
+     WHERE userId = p_user_id
+     LIMIT 1;
+END $$
+
+DROP PROCEDURE IF EXISTS get_tab_group_by_id $$
+CREATE PROCEDURE get_tab_group_by_id (
+    IN p_tab_group_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+)
+BEGIN
+    SELECT *
+      FROM user_tabgroups_view
+     WHERE tabGroupId = p_tab_group_id
+     LIMIT 1;
+END $$
+
+DROP PROCEDURE IF EXISTS get_latest_tab_group_for_user $$
+CREATE PROCEDURE get_latest_tab_group_for_user (
+    IN p_user_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+)
+BEGIN
+    SELECT *
+      FROM user_tabgroups_view
+     WHERE userId = p_user_id
+     ORDER BY tabGroupCreatedAt DESC
+     LIMIT 1;
+END $$
+
+DROP PROCEDURE IF EXISTS list_tab_groups_for_user $$
+CREATE PROCEDURE list_tab_groups_for_user (
+    IN p_user_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+)
+BEGIN
+    SELECT *
+      FROM user_tabgroups_view
+     WHERE userId = p_user_id
+     ORDER BY tabGroupSortOrder ASC,
+              tabGroupCreatedAt ASC;
+END $$
+
+DROP PROCEDURE IF EXISTS get_tab_by_id $$
+CREATE PROCEDURE get_tab_by_id (
+    IN p_tab_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+)
+BEGIN
+    SELECT *
+      FROM tab_detail_view
+     WHERE tabId = p_tab_id
+     LIMIT 1;
+END $$
+
+DROP PROCEDURE IF EXISTS get_latest_tab_for_group $$
+CREATE PROCEDURE get_latest_tab_for_group (
+    IN p_tab_group_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+)
+BEGIN
+    SELECT *
+      FROM tab_detail_view
+     WHERE tabGroupId = p_tab_group_id
+     ORDER BY tabCreatedAt DESC
+     LIMIT 1;
+END $$
+
+DROP PROCEDURE IF EXISTS list_tabs_for_tab_group $$
+CREATE PROCEDURE list_tabs_for_tab_group (
+    IN p_tab_group_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+)
+BEGIN
+    SELECT *
+      FROM tab_detail_view
+     WHERE tabGroupId = p_tab_group_id
+     ORDER BY tabSortOrder ASC,
+              tabCreatedAt ASC;
+END $$
+
+DROP PROCEDURE IF EXISTS get_environment_by_id $$
+CREATE PROCEDURE get_environment_by_id (
+    IN p_environment_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+)
+BEGIN
+    SELECT *
+      FROM environment_detail_view
+     WHERE environmentId = p_environment_id
+     LIMIT 1;
+END $$
+
+DROP PROCEDURE IF EXISTS get_latest_environment_for_tab $$
+CREATE PROCEDURE get_latest_environment_for_tab (
+    IN p_tab_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+)
+BEGIN
+    SELECT *
+      FROM environment_detail_view
+     WHERE tabId = p_tab_id
+     ORDER BY environmentCreatedAt DESC
+     LIMIT 1;
+END $$
+
+DROP PROCEDURE IF EXISTS list_environments_for_tab $$
+CREATE PROCEDURE list_environments_for_tab (
+    IN p_tab_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+)
+BEGIN
+    SELECT *
+      FROM environment_detail_view
+     WHERE tabId = p_tab_id;
+END $$
+
+DROP PROCEDURE IF EXISTS get_tab_group_summary_for_user $$
+CREATE PROCEDURE get_tab_group_summary_for_user (
+    IN p_user_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+)
+BEGIN
+    SELECT *
+      FROM tabgroup_summary_view
+     WHERE userId = p_user_id;
+END $$
+
+DROP PROCEDURE IF EXISTS save_refresh_token $$
+CREATE PROCEDURE save_refresh_token (
+    IN p_user_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    IN p_token_hash CHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    IN p_expires_at DATETIME
+)
+BEGIN
+    INSERT INTO user_refresh_tokens (userId, tokenHash, expiresAt)
+    VALUES (p_user_id, p_token_hash, p_expires_at);
+END $$
+
+DROP PROCEDURE IF EXISTS find_refresh_token $$
+CREATE PROCEDURE find_refresh_token (
+    IN p_token_hash CHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+)
+BEGIN
+    SELECT id,
+           userId,
+           tokenHash,
+           expiresAt,
+           createdAt
+      FROM user_refresh_tokens
+     WHERE tokenHash = p_token_hash
+     LIMIT 1;
+END $$
+
+DROP PROCEDURE IF EXISTS delete_refresh_token $$
+CREATE PROCEDURE delete_refresh_token (
+    IN p_token_hash CHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+)
+BEGIN
+    DELETE FROM user_refresh_tokens
+     WHERE tokenHash = p_token_hash;
+END $$
+
+DROP PROCEDURE IF EXISTS delete_refresh_tokens_for_user $$
+CREATE PROCEDURE delete_refresh_tokens_for_user (
+    IN p_user_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+)
+BEGIN
+    DELETE FROM user_refresh_tokens
+     WHERE userId = p_user_id;
+END $$
+
+DROP PROCEDURE IF EXISTS ensure_refresh_token_table $$
+CREATE PROCEDURE ensure_refresh_token_table ()
+BEGIN
+    CREATE TABLE IF NOT EXISTS user_refresh_tokens (
+        id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        userId CHAR(36) NOT NULL,
+        tokenHash CHAR(64) NOT NULL,
+        expiresAt DATETIME NOT NULL,
+        createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_user_refresh_tokens_userId (userId),
+        UNIQUE INDEX idx_user_refresh_tokens_tokenHash (tokenHash)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 END $$
 
 DROP PROCEDURE IF EXISTS delete_user $$

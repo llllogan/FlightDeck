@@ -37,7 +37,7 @@ export class LoginComponent implements OnInit {
     }
 
     this.authService
-      .ensureValidAccessToken()
+      .ensureSession()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((isValid) => {
         if (isValid && this.authService.isAdmin()) {

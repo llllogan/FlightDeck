@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { verifyAccessToken } from '../services/authTokens';
+import { getAccessTokenFromCookies } from '../utils/authCookies';
 
 export interface AuthenticatedUser {
   id: string;
@@ -28,7 +29,8 @@ export function requireAuth(options: { requireAdmin?: boolean } = {}) {
     }
 
     const headerValue = req.header('authorization') || req.header('Authorization');
-    const token = extractTokenFromHeader(headerValue || undefined);
+    const tokenFromHeader = extractTokenFromHeader(headerValue || undefined);
+    const token = tokenFromHeader ?? getAccessTokenFromCookies(req);
 
     if (!token) {
       res.status(401).json({ error: 'Missing or invalid authorization header' });

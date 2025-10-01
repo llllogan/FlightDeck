@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { hash as hashPassword } from 'bcryptjs';
-import { callStoredProcedure, querySingle } from '../db/helpers';
+import { callStoredProcedure, fetchSingleFromProcedure } from '../db/helpers';
 import type { CreateUserRequest, UpdateUserRequest } from '../models/requestBodies';
 import type { UserRecord } from '../db/resourceAccess';
 import {
@@ -9,6 +9,7 @@ import {
   listTabsForTabGroup,
   listEnvironmentsForTab,
   getUserById as getUserByIdFromDb,
+  getUserByName as getUserByNameFromDb,
   updateUser as updateUserInDb,
 } from '../db/resourceAccess';
 import {
@@ -118,19 +119,20 @@ async function createUser(req: CreateUserRequestHandler, res: StandardResponse):
       return;
     }
 
-    await callStoredProcedure('create_user', [sanitizedName, sanitizedRole ?? null, passwordHash]);
+    const createdUser = await fetchSingleFromProcedure<UserRecord>('create_user', [
+      sanitizedName,
+      sanitizedRole ?? null,
+      passwordHash,
+    ]);
 
-    const createdUser = await querySingle<UserRecord>(
-      'SELECT id, name, role, createdAt, updatedAt FROM users WHERE name = ? ORDER BY createdAt DESC LIMIT 1',
-      [sanitizedName],
-    );
+    const hydratedUser = createdUser ?? (await getUserByNameFromDb(sanitizedName));
 
-    if (!createdUser) {
+    if (!hydratedUser) {
       res.status(201).json({ message: 'User created but could not retrieve record' });
       return;
     }
 
-    res.status(201).json(serializeUser(createdUser));
+    res.status(201).json(serializeUser(hydratedUser));
   } catch (error) {
     console.error('Failed to create user', error);
     res.status(500).json({ error: 'Failed to create user' });
@@ -234,10 +236,7 @@ async function deleteUserById(req: Request<{ userId: string }>, res: Response): 
   }
 
   try {
-    const existingUser = await querySingle<UserRecord>(
-      'SELECT id, name, role, createdAt, updatedAt FROM users WHERE id = ?',
-      [userId],
-    );
+    const existingUser = await getUserByIdFromDb(userId);
 
     if (!existingUser) {
       res.status(404).json({ error: 'User not found' });
@@ -260,10 +259,7 @@ async function getUserSummary(req: Request, res: SummaryResponse): Promise<void>
   }
 
   try {
-    const summary = await querySingle<UserSummaryRowData>(
-      'SELECT * FROM user_hierarchy_summary_view WHERE userId = ?',
-      [userId],
-    );
+    const summary = await fetchSingleFromProcedure<UserSummaryRowData>('get_user_summary', [userId]);
 
     if (!summary) {
       res.status(404).json({ error: 'User not found' });
@@ -304,10 +300,7 @@ async function getUserWorkspace(req: Request, res: WorkspaceResponse): Promise<v
 
   try {
     const [summaryRow, tabGroupRows] = await Promise.all([
-      querySingle<UserSummaryRowData>(
-        'SELECT * FROM user_hierarchy_summary_view WHERE userId = ?',
-        [userId],
-      ),
+      fetchSingleFromProcedure<UserSummaryRowData>('get_user_summary', [userId]),
       listTabGroupsForUser(userId),
     ]);
 

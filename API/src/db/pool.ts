@@ -19,7 +19,12 @@ export async function initDatabase(): Promise<Pool> {
   };
 
   pool = createPool(options);
-  await pool.query('SELECT 1');
+  const connection = await pool.getConnection();
+  try {
+    await connection.ping();
+  } finally {
+    connection.release();
+  }
   return pool;
 }
 

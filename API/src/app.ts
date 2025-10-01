@@ -1,5 +1,6 @@
 import express, { NextFunction, Request, Response } from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import healthRoutes from './routes/health';
 import constsRoutes from './routes/consts';
 import userRoutes from './routes/users';
@@ -25,10 +26,12 @@ const corsOptions = {
   origin: configuredOrigins.includes('*') ? true : configuredOrigins,
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders,
+  credentials: true,
 };
 
 app.set('etag', false);
 app.use(cors(corsOptions));
+app.use(cookieParser());
 app.use(express.json());
 
 apiRouter.get('/', (_req: Request, res: Response) => {

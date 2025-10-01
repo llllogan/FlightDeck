@@ -7,7 +7,7 @@ export const adminAuthGuard: CanActivateFn = (_route, state) => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  return authService.ensureValidAccessToken().pipe(
+  return authService.ensureSession().pipe(
     map((isValid) => {
       if (isValid && authService.isAdmin()) {
         return true;

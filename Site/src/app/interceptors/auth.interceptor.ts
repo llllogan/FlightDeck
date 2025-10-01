@@ -1,4 +1,8 @@
-import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
+import {
+  HttpContextToken,
+  HttpErrorResponse,
+  HttpInterceptorFn,
+} from '@angular/common/http';
 import { inject } from '@angular/core';
 import { environment } from '../../environments/environment';
 import { AuthService } from '../services/auth.service';
@@ -8,46 +12,35 @@ function isApiUrl(url: string): boolean {
   return url.startsWith(environment.apiBaseUrl);
 }
 
-function shouldAttachToken(url: string): boolean {
-  if (!isApiUrl(url)) {
-    return false;
-  }
-  return !url.includes('/auth/');
-}
+export const SKIP_AUTH_REFRESH = new HttpContextToken<boolean>(() => false);
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
-  let modifiedRequest = req;
+  const requestWithCredentials = req.clone({ withCredentials: true });
+  const skipRefresh = requestWithCredentials.context.get(SKIP_AUTH_REFRESH);
 
-  if (shouldAttachToken(req.url)) {
-    const token = authService.getAccessToken();
-    if (token) {
-      modifiedRequest = req.clone({
-        setHeaders: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-    }
-  }
-
-  return next(modifiedRequest).pipe(
+  return next(requestWithCredentials).pipe(
     catchError((error) => {
-      if (
-        shouldAttachToken(req.url) &&
-        error instanceof HttpErrorResponse &&
-        error.status === 401
-      ) {
-        return authService.refreshTokens().pipe(
-          switchMap((newToken) => {
-            if (!newToken) {
-              authService.handleAuthFailure();
-              return throwError(() => error);
-            }
-            const retried = req.clone({
-              setHeaders: {
-                Authorization: `Bearer ${newToken}`,
-              },
-            });
+      const isHttpError = error instanceof HttpErrorResponse;
+
+      if (!isHttpError) {
+        return throwError(() => error);
+      }
+
+      const isLoginRequest = requestWithCredentials.url.includes('/auth/login');
+      const isRefreshRequest = requestWithCredentials.url.includes('/auth/refresh');
+      const shouldAttemptRefresh =
+        !skipRefresh &&
+        !isLoginRequest &&
+        !isRefreshRequest &&
+        error.status === 401 &&
+        isApiUrl(requestWithCredentials.url);
+
+      if (shouldAttemptRefresh) {
+        return authService.refreshSession().pipe(
+          switchMap(() => {
+            const retryContext = requestWithCredentials.context.set(SKIP_AUTH_REFRESH, true);
+            const retried = requestWithCredentials.clone({ context: retryContext });
             return next(retried);
           }),
           catchError((refreshError) => {
@@ -57,16 +50,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         );
       }
 
-      if (error instanceof HttpErrorResponse && error.status === 401) {
-        const rawMessage =
-          typeof error.error === 'string'
-            ? error.error
-            : typeof error.error === 'object' && error.error
-              ? String(error.error.error ?? '')
-              : '';
-        if (rawMessage.toLowerCase().includes('invalid signature')) {
-          authService.handleAuthFailure();
-        }
+      if (error.status === 401 || error.status === 403) {
+        authService.handleAuthFailure();
       }
 
       return throwError(() => error);

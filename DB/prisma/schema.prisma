@@ -13,6 +13,7 @@ model User {
   role      String?    @db.VarChar(50)
   passwordHash String? @db.VarChar(255)
   tabGroups TabGroup[]
+  refreshTokens UserRefreshToken[]
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 
@@ -55,4 +56,16 @@ model Environment {
   updatedAt DateTime @updatedAt
 
   @@map("environments")
+}
+
+model UserRefreshToken {
+  id        BigInt   @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String   @db.Char(36)
+  tokenHash String   @unique @db.Char(64)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("user_refresh_tokens")
+  @@index([userId], name: "idx_user_refresh_tokens_userId")
 }

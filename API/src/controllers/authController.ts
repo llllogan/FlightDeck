@@ -6,6 +6,7 @@ import {
   type UserAuthRecord,
 } from '../db/resourceAccess';
 import {
+  accessTtlSeconds,
   generateAccessToken,
   generateRefreshToken,
   hashRefreshToken,
@@ -17,30 +18,30 @@ import {
   saveRefreshToken,
 } from '../db/refreshTokens';
 import { sanitizeTextInput } from '../utils/sanitizers';
+import {
+  clearAuthCookies,
+  getRefreshTokenFromCookies,
+  setAccessCookie,
+  setRefreshCookie,
+} from '../utils/authCookies';
 
 interface LoginRequestBody {
   name?: string;
   password?: string;
 }
 
-interface RefreshRequestBody {
-  refreshToken?: string;
-}
-
-type AuthSuccessResponse = {
-  accessToken: string;
-  refreshToken: string;
+type AuthSessionResponse = {
   user: {
     id: string;
     name: string;
     role: string | null;
   };
+  accessTokenExpiresAt?: string;
+  refreshTokenExpiresAt?: string;
 };
 
 type AuthErrorResponse = { error: string };
-
-type AuthResponse = Response<AuthSuccessResponse | AuthErrorResponse>;
-
+type AuthResponse = Response<AuthSessionResponse | AuthErrorResponse>;
 type LogoutResponse = Response<{ success: true } | AuthErrorResponse>;
 
 const sanitizeName = (name?: string) => sanitizeTextInput(name);
@@ -52,19 +53,30 @@ async function withRefreshTable<T>(operation: () => Promise<T>): Promise<T> {
   return operation();
 }
 
-function buildSuccessResponse(user: UserAuthRecord, accessToken: string, refreshToken: string) {
+function buildSessionPayload(user: UserAuthRecord, options?: { refreshExpiresAt?: Date }): AuthSessionResponse {
+  const now = Date.now();
+  const accessExpiresAt = new Date(now + accessTtlSeconds * 1000);
+
   return {
-    accessToken,
-    refreshToken,
     user: {
       id: user.id,
       name: user.name,
       role: user.role,
     },
+    accessTokenExpiresAt: accessExpiresAt.toISOString(),
+    refreshTokenExpiresAt: options?.refreshExpiresAt?.toISOString(),
   };
 }
 
-export async function login(req: Request<unknown, unknown, LoginRequestBody>, res: AuthResponse): Promise<void> {
+function respondWithInvalidRefresh(res: Response<AuthErrorResponse>, message: string): void {
+  clearAuthCookies(res);
+  res.status(401).json({ error: message });
+}
+
+export async function login(
+  req: Request<unknown, unknown, LoginRequestBody>,
+  res: AuthResponse,
+): Promise<void> {
   const sanitizedName = sanitizeName(req.body?.name);
   const sanitizedPassword = sanitizePassword(req.body?.password);
 
@@ -100,37 +112,39 @@ export async function login(req: Request<unknown, unknown, LoginRequestBody>, re
       saveRefreshToken(user.id, hashRefreshToken(refreshTokenDetails.token), refreshTokenDetails.expiresAt),
     );
 
-    res.json(buildSuccessResponse(user, accessToken, refreshTokenDetails.token));
+    setAccessCookie(res, accessToken);
+    setRefreshCookie(res, refreshTokenDetails.token);
+
+    res.json(buildSessionPayload(user, { refreshExpiresAt: refreshTokenDetails.expiresAt }));
   } catch (error) {
     console.error('Failed to log in user', error);
     res.status(500).json({ error: 'Failed to log in.' });
   }
 }
 
-export async function refreshToken(
-  req: Request<unknown, unknown, RefreshRequestBody>,
-  res: AuthResponse,
-): Promise<void> {
-  const sanitizedRefreshToken = sanitizeRefreshToken(req.body?.refreshToken);
+export async function refreshToken(req: Request, res: AuthResponse): Promise<void> {
+  const cookieRefreshToken = getRefreshTokenFromCookies(req);
+  const sanitizedFromBody = sanitizeRefreshToken((req.body as { refreshToken?: string })?.refreshToken);
+  const refreshToken = cookieRefreshToken ?? sanitizedFromBody;
 
-  if (!sanitizedRefreshToken) {
-    res.status(400).json({ error: 'Refresh token is required.' });
+  if (!refreshToken) {
+    respondWithInvalidRefresh(res, 'Refresh token is required.');
     return;
   }
 
-  const tokenHash = hashRefreshToken(sanitizedRefreshToken);
+  const tokenHash = hashRefreshToken(refreshToken);
 
   try {
     const storedToken = await withRefreshTable(() => findRefreshToken(tokenHash));
 
     if (!storedToken) {
-      res.status(401).json({ error: 'Invalid refresh token.' });
+      respondWithInvalidRefresh(res, 'Invalid refresh token.');
       return;
     }
 
     if (storedToken.expiresAt.getTime() <= Date.now()) {
       await withRefreshTable(() => deleteRefreshToken(tokenHash));
-      res.status(401).json({ error: 'Refresh token expired.' });
+      respondWithInvalidRefresh(res, 'Refresh token expired.');
       return;
     }
 
@@ -138,12 +152,13 @@ export async function refreshToken(
 
     if (!user) {
       await withRefreshTable(() => deleteRefreshToken(tokenHash));
-      res.status(401).json({ error: 'Invalid refresh token.' });
+      respondWithInvalidRefresh(res, 'Invalid refresh token.');
       return;
     }
 
     if ((user.role ?? '').toLowerCase() !== 'admin') {
       await withRefreshTable(() => deleteRefreshToken(tokenHash));
+      clearAuthCookies(res);
       res.status(403).json({ error: 'Admin privileges required.' });
       return;
     }
@@ -157,31 +172,51 @@ export async function refreshToken(
       saveRefreshToken(user.id, hashRefreshToken(nextRefresh.token), nextRefresh.expiresAt),
     );
 
-    res.json(buildSuccessResponse({ ...user, passwordHash: null }, accessToken, nextRefresh.token));
+    setAccessCookie(res, accessToken);
+    setRefreshCookie(res, nextRefresh.token);
+
+    res.json(buildSessionPayload({ ...user, passwordHash: null }, { refreshExpiresAt: nextRefresh.expiresAt }));
   } catch (error) {
     console.error('Failed to refresh token', error);
+    clearAuthCookies(res);
     res.status(500).json({ error: 'Failed to refresh token.' });
   }
 }
 
-export async function logout(
-  req: Request<unknown, unknown, RefreshRequestBody>,
-  res: LogoutResponse,
-): Promise<void> {
-  const sanitizedRefreshToken = sanitizeRefreshToken(req.body?.refreshToken);
-
-  if (!sanitizedRefreshToken) {
-    res.status(400).json({ error: 'Refresh token is required.' });
-    return;
-  }
-
-  const tokenHash = hashRefreshToken(sanitizedRefreshToken);
+export async function logout(req: Request, res: LogoutResponse): Promise<void> {
+  const cookieRefreshToken = getRefreshTokenFromCookies(req);
+  const sanitizedFromBody = sanitizeRefreshToken((req.body as { refreshToken?: string })?.refreshToken);
+  const refreshToken = cookieRefreshToken ?? sanitizedFromBody;
 
   try {
-    await withRefreshTable(() => deleteRefreshToken(tokenHash));
-    res.json({ success: true });
+    if (refreshToken) {
+      const tokenHash = hashRefreshToken(refreshToken);
+      await withRefreshTable(() => deleteRefreshToken(tokenHash));
+    }
   } catch (error) {
     console.error('Failed to revoke refresh token', error);
     res.status(500).json({ error: 'Failed to revoke refresh token.' });
+    return;
+  } finally {
+    clearAuthCookies(res);
   }
+
+  res.json({ success: true });
+}
+
+export function getSession(req: Request, res: AuthResponse): void {
+  const authUser = req.authUser;
+
+  if (!authUser) {
+    res.status(401).json({ error: 'Not authenticated.' });
+    return;
+  }
+
+  res.json({
+    user: {
+      id: authUser.id,
+      name: authUser.name,
+      role: authUser.role,
+    },
+  });
 }
