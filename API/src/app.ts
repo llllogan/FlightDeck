@@ -49,6 +49,24 @@ apiRouter.use('/favicons', faviconRoutes);
 apiRouter.use('/search', searchRoutes);
 apiRouter.use('/admin', adminRoutes);
 
+if (process.env.NODE_ENV !== 'production') {
+  const devModuleSpecifier = ['.', 'dev', 'registerDevRoutes'].join('/');
+  type DevRoutesModule = {
+    registerDevRoutes?: (router: import('express').Router) => void;
+  };
+
+  void import(devModuleSpecifier)
+    .then((module: DevRoutesModule) => {
+      const registerDevRoutes = module.registerDevRoutes;
+      if (typeof registerDevRoutes === 'function') {
+        registerDevRoutes(apiRouter);
+      }
+    })
+    .catch((error) => {
+      console.warn('Failed to load dev routes:', error);
+    });
+}
+
 app.use('/api', apiRouter);
 
 app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {

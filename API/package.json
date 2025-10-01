@@ -7,7 +7,7 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/server.js",
-    "dev": "ts-node --transpile-only src/server.ts"
+    "dev": "ts-node --project tsconfig.dev.json --transpile-only src/server.ts"
   },
   "keywords": [
     "express",
