@@ -69,6 +69,19 @@ jobs:
             --user="${{ secrets.DB_USER }}" \
             "${{ secrets.DB_NAME }}" < sql/stored_procs.sql
 
+      - name: List tables
+        env:
+          MYSQL_PWD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          mysql \
+            --host="${{ secrets.DB_HOST }}" \
+            --port="${{ secrets.DB_PORT }}" \
+            --user="${{ secrets.DB_USER }}" \
+            --batch \
+            --skip-column-names \
+            --execute="SHOW TABLES" \
+            "${{ secrets.DB_NAME }}"
+
   migrate-and-seed-prod:
     name: Migrate and seed (prod)
     runs-on: self-hosted
@@ -132,3 +145,16 @@ jobs:
             --port="${{ secrets.DB_PORT }}" \
             --user="${{ secrets.DB_USER }}" \
             "${{ secrets.DB_NAME }}" < sql/stored_procs.sql
+
+      - name: List tables
+        env:
+          MYSQL_PWD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          mysql \
+            --host="${{ secrets.DB_HOST }}" \
+            --port="${{ secrets.DB_PORT }}" \
+            --user="${{ secrets.DB_USER }}" \
+            --batch \
+            --skip-column-names \
+            --execute="SHOW TABLES" \
+            "${{ secrets.DB_NAME }}"
