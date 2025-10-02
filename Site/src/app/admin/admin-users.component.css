@@ -19,3 +19,11 @@
 .admin-users-table .mat-mdc-row:hover {
   background-color: rgba(15, 23, 42, 0.04);
 }
+
+.sessions-table tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+.sessions-table tbody tr:hover {
+  background-color: rgba(15, 23, 42, 0.04);
+}

@@ -6,6 +6,7 @@ import type {
   UserRecord,
   UserTabGroupViewRow,
 } from '../db/resourceAccess';
+import type { RefreshTokenWithUserRow } from '../db/refreshTokens';
 
 export interface UserSummaryRow extends RowDataPacket {
   userId: string;
@@ -89,5 +90,16 @@ export function serializeUser(row: UserRecord) {
     role: row.role,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+  };
+}
+
+export function serializeAdminSession(row: RefreshTokenWithUserRow) {
+  return {
+    id: row.id,
+    userId: row.userId,
+    userName: row.userName,
+    userRole: row.userRole,
+    createdAt: row.createdAt,
+    expiresAt: row.expiresAt,
   };
 }

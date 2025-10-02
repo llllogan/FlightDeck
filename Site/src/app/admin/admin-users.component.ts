@@ -5,7 +5,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AdminUsersApiService } from '../services/admin-users-api.service';
 import { AuthService } from '../services/auth.service';
-import { ApiUser } from '../models';
+import { AdminSessionsApiService } from '../services/admin-sessions-api.service';
+import { AdminSession, ApiUser } from '../models';
 import { MatTableModule } from '@angular/material/table';
 
 @Component({
@@ -49,18 +50,39 @@ export class AdminUsersComponent implements OnInit {
 
   private readonly document = inject(DOCUMENT);
 
+  sessions: AdminSession[] = [];
+  loadingSessions = false;
+  sessionsError: string | null = null;
+  sessionsLoaded = false;
+  deletingSessionIds = new Set<number>();
+  activeTab: 'users' | 'sessions' = 'users';
+
   constructor(
     private readonly adminUsersApi: AdminUsersApiService,
+    private readonly adminSessionsApi: AdminSessionsApiService,
     private readonly formBuilder: FormBuilder,
     private readonly authService: AuthService,
   ) {}
 
   ngOnInit(): void {
     this.fetchUsers();
+    this.fetchSessions();
   }
 
   get hasUsers(): boolean {
     return this.users.length > 0;
+  }
+
+  selectTab(tab: 'users' | 'sessions'): void {
+    if (this.activeTab === tab) {
+      return;
+    }
+
+    this.activeTab = tab;
+
+    if (tab === 'sessions' && !this.sessionsLoaded) {
+      this.fetchSessions();
+    }
   }
 
   fetchUsers(): void {
@@ -81,6 +103,32 @@ export class AdminUsersComponent implements OnInit {
           this.handleAuthError(error);
         },
       });
+  }
+
+  fetchSessions(): void {
+    this.loadingSessions = true;
+    this.sessionsError = null;
+    this.adminSessionsApi
+      .listSessions()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (sessions) => {
+          this.sessions = sessions;
+          this.loadingSessions = false;
+          this.sessionsLoaded = true;
+        },
+        error: (error) => {
+          console.error('Failed to load sessions', error);
+          this.sessionsError = 'Unable to fetch sessions.';
+          this.loadingSessions = false;
+          this.sessionsLoaded = false;
+          this.handleAuthError(error);
+        },
+      });
+  }
+
+  refreshSessions(): void {
+    this.fetchSessions();
   }
 
   submit(): void {
@@ -266,6 +314,46 @@ export class AdminUsersComponent implements OnInit {
           const updated = new Set(this.deletingIds);
           updated.delete(user.id);
           this.deletingIds = updated;
+          this.handleAuthError(error);
+        },
+      });
+  }
+
+  deleteSession(session: AdminSession): void {
+    const defaultView = this.document.defaultView;
+    const trimmedName = session.userName.trim();
+    const displayName = trimmedName ? ` "${trimmedName}"` : '';
+    const confirmed = defaultView
+      ? defaultView.confirm(`Revoke session${displayName}? This will sign them out on their next request.`)
+      : true;
+
+    if (!confirmed) {
+      return;
+    }
+
+    if (this.deletingSessionIds.has(session.id)) {
+      return;
+    }
+
+    const deleting = new Set(this.deletingSessionIds);
+    deleting.add(session.id);
+    this.deletingSessionIds = deleting;
+
+    this.adminSessionsApi
+      .deleteSession(session.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.sessions = this.sessions.filter((existing) => existing.id !== session.id);
+          const updated = new Set(this.deletingSessionIds);
+          updated.delete(session.id);
+          this.deletingSessionIds = updated;
+        },
+        error: (error) => {
+          console.error('Failed to revoke session', error);
+          const updated = new Set(this.deletingSessionIds);
+          updated.delete(session.id);
+          this.deletingSessionIds = updated;
           this.handleAuthError(error);
         },
       });

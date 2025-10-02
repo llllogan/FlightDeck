@@ -554,6 +554,15 @@ BEGIN
      WHERE tokenHash = p_token_hash;
 END $$
 
+DROP PROCEDURE IF EXISTS delete_refresh_token_by_id $$
+CREATE PROCEDURE delete_refresh_token_by_id (
+    IN p_id BIGINT UNSIGNED
+)
+BEGIN
+    DELETE FROM user_refresh_tokens
+     WHERE id = p_id;
+END $$
+
 DROP PROCEDURE IF EXISTS delete_refresh_tokens_for_user $$
 CREATE PROCEDURE delete_refresh_tokens_for_user (
     IN p_user_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
@@ -575,6 +584,20 @@ BEGIN
         INDEX idx_user_refresh_tokens_userId (userId),
         UNIQUE INDEX idx_user_refresh_tokens_tokenHash (tokenHash)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+END $$
+
+DROP PROCEDURE IF EXISTS list_refresh_tokens $$
+CREATE PROCEDURE list_refresh_tokens ()
+BEGIN
+    SELECT ur.id,
+           ur.userId,
+           ur.expiresAt,
+           ur.createdAt,
+           u.name AS userName,
+           u.role AS userRole
+      FROM user_refresh_tokens ur
+      JOIN users u ON u.id = ur.userId
+     ORDER BY ur.createdAt DESC;
 END $$
 
 DROP PROCEDURE IF EXISTS delete_user $$

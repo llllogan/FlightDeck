@@ -1,5 +1,5 @@
 import type { RowDataPacket } from 'mysql2/promise';
-import { callStoredProcedure, fetchSingleFromProcedure } from './helpers';
+import { callStoredProcedure, fetchAllFromProcedure, fetchSingleFromProcedure } from './helpers';
 
 export interface RefreshTokenRow extends RowDataPacket {
   id: number;
@@ -7,6 +7,11 @@ export interface RefreshTokenRow extends RowDataPacket {
   tokenHash: string;
   expiresAt: Date;
   createdAt: Date;
+}
+
+export interface RefreshTokenWithUserRow extends RefreshTokenRow {
+  userName: string;
+  userRole: string | null;
 }
 
 export async function ensureRefreshTokenTable(): Promise<void> {
@@ -31,4 +36,12 @@ export async function deleteRefreshToken(tokenHash: string): Promise<void> {
 
 export async function deleteRefreshTokensForUser(userId: string): Promise<void> {
   await callStoredProcedure('delete_refresh_tokens_for_user', [userId]);
+}
+
+export async function deleteRefreshTokenById(id: number): Promise<void> {
+  await callStoredProcedure('delete_refresh_token_by_id', [id]);
+}
+
+export async function listRefreshTokens(): Promise<RefreshTokenWithUserRow[]> {
+  return fetchAllFromProcedure<RefreshTokenWithUserRow>('list_refresh_tokens');
 }
