@@ -36,6 +36,7 @@ export class AdminUsersComponent implements OnInit {
   updating = false;
   updateError: string | null = null;
   readonly displayedColumns: string[] = ['name', 'role', 'id', 'created', 'actions'];
+  readonly sessionColumns: string[] = ['user', 'userId', 'created', 'expires', 'actions'];
   createAttempted = false;
   readonly currentAdmin$ = this.authService.user$;
 

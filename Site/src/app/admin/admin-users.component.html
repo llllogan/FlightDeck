@@ -140,7 +140,7 @@
                 <table
                   mat-table
                   [dataSource]="users"
-                  class="admin-users-table w-full bg-transparent text-sm text-slate-600 dark:text-slate-300"
+                  class="admin-table w-full bg-transparent text-sm text-slate-600 dark:text-slate-300"
                 >
                   <ng-container matColumnDef="name">
                     <th
@@ -330,48 +330,92 @@
             <p *ngIf="loadingSessions" class="text-sm text-slate-500 dark:text-slate-400">Loading sessions…</p>
 
             <div *ngIf="sessions.length" class="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-              <table class="sessions-table w-full table-auto text-sm text-slate-600 dark:text-slate-300">
-                <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:bg-slate-900/60 dark:text-slate-400">
-                  <tr>
-                    <th class="px-4 py-3 text-left">User</th>
-                    <th class="px-4 py-3 text-left">User ID</th>
-                    <th class="px-4 py-3 text-left">Started</th>
-                    <th class="px-4 py-3 text-left">Expires</th>
-                    <th class="px-4 py-3 text-left">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr
-                    *ngFor="let session of sessions"
-                    class="border-t border-slate-100 last:border-b-0 dark:border-slate-800"
+              <table
+                mat-table
+                [dataSource]="sessions"
+                class="admin-table w-full bg-transparent text-sm text-slate-600 dark:text-slate-300"
+              >
+                <ng-container matColumnDef="user">
+                  <th
+                    mat-header-cell
+                    *matHeaderCellDef
+                    class="text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400"
                   >
-                    <td class="px-4 py-3">
-                      <div class="flex flex-col">
-                        <span class="font-medium text-slate-800 dark:text-slate-100">{{ session.userName }}</span>
-                        <span class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                          {{ session.userRole || '—' }}
-                        </span>
-                      </div>
-                    </td>
-                    <td class="px-4 py-3">
-                      <code class="break-all rounded-lg bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-500 dark:bg-slate-900 dark:text-slate-300">
-                        {{ session.userId }}
-                      </code>
-                    </td>
-                    <td class="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">{{ session.createdAt | date: 'medium' }}</td>
-                    <td class="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">{{ session.expiresAt | date: 'medium' }}</td>
-                    <td class="px-4 py-3">
-                      <button
-                        type="button"
-                        class="inline-flex items-center justify-center gap-2 rounded-full border border-red-200/70 px-3 py-1.5 text-xs font-semibold text-red-500 transition hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-500/40 dark:text-red-300 dark:hover:border-red-400 dark:hover:bg-red-900/40 dark:hover:text-red-200"
-                        (click)="deleteSession(session)"
-                        [disabled]="deletingSessionIds.has(session.id)"
-                      >
-                        {{ deletingSessionIds.has(session.id) ? 'Revoking…' : 'Revoke' }}
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
+                    User
+                  </th>
+                  <td mat-cell *matCellDef="let session">
+                    <div class="flex flex-col">
+                      <span class="font-medium text-slate-800 dark:text-slate-100">{{ session.userName }}</span>
+                      <span class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        {{ session.userRole || '—' }}
+                      </span>
+                    </div>
+                  </td>
+                </ng-container>
+
+                <ng-container matColumnDef="userId">
+                  <th
+                    mat-header-cell
+                    *matHeaderCellDef
+                    class="text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400"
+                  >
+                    User ID
+                  </th>
+                  <td mat-cell *matCellDef="let session">
+                    <code class="break-all rounded-lg bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-500 dark:bg-slate-900 dark:text-slate-300">
+                      {{ session.userId }}
+                    </code>
+                  </td>
+                </ng-container>
+
+                <ng-container matColumnDef="created">
+                  <th
+                    mat-header-cell
+                    *matHeaderCellDef
+                    class="text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400"
+                  >
+                    Started
+                  </th>
+                  <td mat-cell *matCellDef="let session">
+                    <span class="text-xs text-slate-500 dark:text-slate-400">{{ session.createdAt | date: 'medium' }}</span>
+                  </td>
+                </ng-container>
+
+                <ng-container matColumnDef="expires">
+                  <th
+                    mat-header-cell
+                    *matHeaderCellDef
+                    class="text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400"
+                  >
+                    Expires
+                  </th>
+                  <td mat-cell *matCellDef="let session">
+                    <span class="text-xs text-slate-500 dark:text-slate-400">{{ session.expiresAt | date: 'medium' }}</span>
+                  </td>
+                </ng-container>
+
+                <ng-container matColumnDef="actions">
+                  <th
+                    mat-header-cell
+                    *matHeaderCellDef
+                    class="text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400"
+                  >
+                    Actions
+                  </th>
+                  <td mat-cell *matCellDef="let session">
+                    <button
+                      type="button"
+                      class="inline-flex items-center justify-center gap-2 rounded-full border border-red-200/70 px-3 py-1.5 text-xs font-semibold text-red-500 transition hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-500/40 dark:text-red-300 dark:hover:border-red-400 dark:hover:bg-red-900/40 dark:hover:text-red-200"
+                      (click)="deleteSession(session)"
+                      [disabled]="deletingSessionIds.has(session.id)"
+                    >
+                      {{ deletingSessionIds.has(session.id) ? 'Revoking…' : 'Revoke' }}
+                    </button>
+                  </td>
+                </ng-container>
+
+                <tr mat-header-row *matHeaderRowDef="sessionColumns"></tr>
+                <tr mat-row *matRowDef="let session; columns: sessionColumns" class="border-b border-slate-200 last:border-0 dark:border-slate-800"></tr>
               </table>
             </div>
           </div>
