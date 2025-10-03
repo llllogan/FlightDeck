@@ -159,6 +159,15 @@ export class WorkspaceComponent implements OnInit, AfterViewInit {
     this.focusSearchInput();
   }
 
+  logout(): void {
+    this.authService
+      .logout({ redirectTo: '/dashboard/login' })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        error: (error) => console.error('Failed to log out', error),
+      });
+  }
+
   onSearchKeydown(event: KeyboardEvent): void {
     const term = this.tabSearchControl.value.trim();
     switch (event.key) {
