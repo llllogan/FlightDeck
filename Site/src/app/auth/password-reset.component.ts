@@ -114,11 +114,11 @@ export class PasswordResetComponent implements OnInit {
     this.confirmPasswordControl.setErrors(Object.keys(errors).length > 0 ? errors : null);
   }
 
-  private get passwordControl() {
+  get passwordControl() {
     return this.resetForm.get('password')!;
   }
 
-  private get confirmPasswordControl() {
+  get confirmPasswordControl() {
     return this.resetForm.get('confirmPassword')!;
   }
 
