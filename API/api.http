@@ -17,16 +17,6 @@ Accept: application/json
   "password": "admin-password"
 }
 
-### Dev Bootstrap Admin (available only when NODE_ENV != production)
-POST http://{{host}}/dev/bootstrap-admin
-Content-Type: application/json
-Accept: application/json
-
-{
-  "name": "logan",
-  "password": ""
-}
-
 ### Refresh Access Token
 POST http://{{host}}/auth/refresh
 Content-Type: application/json
@@ -147,7 +137,17 @@ Accept: application/json
 GET http://{{host}}/environments/tabs/{{tabId}}
 Accept: application/json
 
-### Debug: List all users (admin only)
+### Debug: List all users (available only when NODE_ENV != production)
 GET http://{{host}}/debug/users
 Accept: application/json
-Authorization: Bearer <access_token_here>
+
+
+### Debug Bootstrap Admin (available only when NODE_ENV != production)
+POST http://{{host}}/debug/bootstrap-admin
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "logan",
+  "password": ""
+}

@@ -16,6 +16,8 @@ import adminRoutes from './routes/admin';
 const app = express();
 const apiRouter = express.Router();
 
+const isProduction = (process.env.NODE_ENV || '').toLowerCase() === 'production';
+
 const defaultOrigins = ['http://localhost:4200', 'http://flightdeck.site', 'https://flightdeck.site'];
 const configuredOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map((origin) => origin.trim()).filter(Boolean)
@@ -40,8 +42,6 @@ apiRouter.get('/', (_req: Request, res: Response) => {
 });
 
 apiRouter.use('/auth', authRoutes);
-apiRouter.use('/debug', debugRoutes);
-apiRouter.use('/debug', debugRoutes);
 apiRouter.use('/health', healthRoutes);
 apiRouter.use('/consts', constsRoutes);
 apiRouter.use('/users', userRoutes);
@@ -52,22 +52,8 @@ apiRouter.use('/favicons', faviconRoutes);
 apiRouter.use('/search', searchRoutes);
 apiRouter.use('/admin', adminRoutes);
 
-if (process.env.NODE_ENV !== 'production') {
-  const devModuleSpecifier = ['.', 'dev', 'registerDevRoutes'].join('/');
-  type DevRoutesModule = {
-    registerDevRoutes?: (router: import('express').Router) => void;
-  };
-
-  void import(devModuleSpecifier)
-    .then((module: DevRoutesModule) => {
-      const registerDevRoutes = module.registerDevRoutes;
-      if (typeof registerDevRoutes === 'function') {
-        registerDevRoutes(apiRouter);
-      }
-    })
-    .catch((error) => {
-      console.warn('Failed to load dev routes:', error);
-    });
+if (!isProduction) {
+  apiRouter.use('/debug', debugRoutes);
 }
 
 app.use('/api', apiRouter);
