@@ -3,6 +3,7 @@ import {
   HttpClient,
   HttpContext,
   HttpHeaders,
+  HttpParams,
   HttpResponse,
 } from '@angular/common/http';
 import { Router } from '@angular/router';
@@ -51,6 +52,7 @@ export class AuthService {
 
   private legacyUserChecked = false;
   private legacyUserHeader: string | null = null;
+  private readonly usernameAvailabilityCache = new Map<string, boolean>();
 
   private refreshInFlight$: Observable<boolean> | null = null;
 
@@ -65,6 +67,40 @@ export class AuthService {
       .pipe(
         tap((response) => this.setSession(response.user)),
         map((response) => response.user),
+      );
+  }
+
+  register(name: string, password: string): Observable<StoredAuthUser> {
+    const context = new HttpContext().set(SKIP_AUTH_REFRESH, true);
+    return this.http
+      .post<AuthSessionResponse>(`${this.baseUrl}/register`, { name, password }, { context })
+      .pipe(
+        tap((response) => this.setSession(response.user)),
+        map((response) => response.user),
+      );
+  }
+
+  checkUsernameAvailability(name: string): Observable<boolean> {
+    const trimmed = name.trim();
+
+    if (!trimmed) {
+      return of(false);
+    }
+
+    const cacheKey = trimmed.toLowerCase();
+    if (this.usernameAvailabilityCache.has(cacheKey)) {
+      return of(this.usernameAvailabilityCache.get(cacheKey) ?? false);
+    }
+
+    const context = new HttpContext().set(SKIP_AUTH_REFRESH, true);
+    const params = new HttpParams().set('name', trimmed);
+
+    return this.http
+      .get<{ available: boolean }>(`${this.baseUrl}/username-available`, { context, params })
+      .pipe(
+        map((response) => response.available),
+        tap((available) => this.usernameAvailabilityCache.set(cacheKey, available)),
+        catchError(() => of(false)),
       );
   }
 

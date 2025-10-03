@@ -17,6 +17,10 @@ export const routes: Routes = [
     loadComponent: () => import('./dashboard/dashboard-login.component').then((m) => m.DashboardLoginComponent),
   },
   {
+    path: 'sign-up',
+    loadComponent: () => import('./auth/sign-up.component').then((m) => m.SignUpComponent),
+  },
+  {
     path: '',
     pathMatch: 'full',
     loadComponent: () => import('./auth/legacy-redirect.component').then((m) => m.LegacyRedirectComponent),
@@ -30,6 +34,5 @@ export const routes: Routes = [
     canActivate: [dashboardAuthGuard],
     loadComponent: () => import('./workspace/workspace.component').then((m) => m.WorkspaceComponent),
   },
-  { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
   { path: '**', redirectTo: 'dashboard' },
 ];

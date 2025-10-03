@@ -4,6 +4,7 @@ import {
   getUserById as getUserByIdFromDb,
   getUserWithPasswordByName,
   getUserWithPasswordById,
+  getUserByName as getUserByNameFromDb,
   type UserAuthRecord,
   type UserRecord,
   updateUser,
@@ -28,12 +29,16 @@ import {
   setAccessCookie,
   setRefreshCookie,
 } from '../utils/authCookies';
+import { fetchSingleFromProcedure } from '../db/helpers';
 import type {
   AuthErrorResponse,
   AuthResponse,
   AuthSessionResponse,
   LoginRequest,
   LogoutResponse,
+  RegisterRequest,
+  UsernameAvailabilityRequest,
+  UsernameAvailabilityResponse,
 } from '../types/controllers/auth';
 
 const sanitizeName = (name?: string) => sanitizeTextInput(name);
@@ -106,6 +111,78 @@ export async function login(req: LoginRequest, res: AuthResponse): Promise<void>
   } catch (error) {
     console.error('Failed to log in user', error);
     res.status(500).json({ error: 'Failed to log in.' });
+  }
+}
+
+export async function checkUsernameAvailability(
+  req: UsernameAvailabilityRequest,
+  res: UsernameAvailabilityResponse,
+): Promise<void> {
+  const rawName = req.query?.name;
+  const candidate = typeof rawName === 'string' ? rawName : undefined;
+  const sanitizedName = sanitizeName(candidate);
+
+  if (!sanitizedName) {
+    res.status(400).json({ error: 'Name is required.' });
+    return;
+  }
+
+  try {
+    const existing = await getUserByNameFromDb(sanitizedName);
+    res.json({ available: !existing });
+  } catch (error) {
+    console.error('Failed to check username availability', error);
+    res.status(500).json({ error: 'Failed to check username availability.' });
+  }
+}
+
+export async function register(req: RegisterRequest, res: AuthResponse): Promise<void> {
+  const sanitizedName = sanitizeName(req.body?.name);
+  const sanitizedPassword = sanitizeNewPassword(req.body?.password);
+
+  if (!sanitizedName) {
+    res.status(400).json({ error: 'Name is required.' });
+    return;
+  }
+
+  if (!sanitizedPassword) {
+    res.status(400).json({ error: 'Password must be at least 8 characters.' });
+    return;
+  }
+
+  try {
+    const existing = await getUserByNameFromDb(sanitizedName);
+
+    if (existing) {
+      res.status(409).json({ error: 'Name is already taken.' });
+      return;
+    }
+
+    const passwordHash = await hash(sanitizedPassword, 10);
+
+    await fetchSingleFromProcedure<UserRecord>('create_user', [sanitizedName, null, passwordHash]);
+
+    const createdUser = await getUserByNameFromDb(sanitizedName);
+
+    if (!createdUser) {
+      res.status(500).json({ error: 'Failed to create user.' });
+      return;
+    }
+
+    const accessToken = generateAccessToken(createdUser);
+    const refreshTokenDetails = generateRefreshToken();
+
+    await withRefreshTable(() =>
+      saveRefreshToken(createdUser.id, hashRefreshToken(refreshTokenDetails.token), refreshTokenDetails.expiresAt),
+    );
+
+    setAccessCookie(res, accessToken);
+    setRefreshCookie(res, refreshTokenDetails.token);
+
+    res.status(201).json(buildSessionPayload(createdUser, { refreshExpiresAt: refreshTokenDetails.expiresAt }));
+  } catch (error) {
+    console.error('Failed to register user', error);
+    res.status(500).json({ error: 'Failed to register user.' });
   }
 }
 

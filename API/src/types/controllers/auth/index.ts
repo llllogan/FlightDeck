@@ -5,6 +5,11 @@ export interface LoginRequestBody {
   password?: string;
 }
 
+export interface RegisterRequestBody {
+  name?: string;
+  password?: string;
+}
+
 export interface AuthSessionResponse {
   user: {
     id: string;
@@ -19,3 +24,6 @@ export type AuthErrorResponse = { error: string };
 export type AuthResponse = Response<AuthSessionResponse | AuthErrorResponse>;
 export type LogoutResponse = Response<{ success: true } | AuthErrorResponse>;
 export type LoginRequest = Request<unknown, unknown, LoginRequestBody>;
+export type RegisterRequest = Request<unknown, unknown, RegisterRequestBody>;
+export type UsernameAvailabilityRequest = Request<unknown, { available: boolean } | AuthErrorResponse, unknown, { name?: string }>;
+export type UsernameAvailabilityResponse = Response<{ available: boolean } | AuthErrorResponse>;

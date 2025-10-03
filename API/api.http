@@ -42,6 +42,20 @@ x-user-id: {{userId}}
   "confirmPassword": "new-strong-password"
 }
 
+### Username Availability
+GET http://{{host}}/auth/username-available?name={{username}}
+Accept: application/json
+
+### Register
+POST http://{{host}}/auth/register
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "{{username}}",
+  "password": "new-strong-password"
+}
+
 ### Admin List Users (requires Bearer token)
 GET http://{{host}}/admin/users
 Accept: application/json

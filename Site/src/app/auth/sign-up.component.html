@@ -1,0 +1,81 @@
+<div class="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-4">
+  <div class="w-full max-w-md rounded-3xl border border-slate-800 bg-slate-900/80 p-8 shadow-lg shadow-slate-900/40 backdrop-blur">
+    <div class="mb-6 text-center">
+      <h1 class="text-2xl font-semibold tracking-tight">Create your FlightDeck account</h1>
+      <p class="mt-2 text-sm text-slate-400">Pick a username and password to get started.</p>
+    </div>
+
+    <form [formGroup]="signUpForm" (ngSubmit)="submit()" class="space-y-4">
+      <label class="block text-sm font-medium text-slate-300">
+        <span class="mb-1 flex items-center justify-between">
+          <span>Name</span>
+          <span class="text-xs font-normal" [ngClass]="nameStatusClass">
+            <ng-container [ngSwitch]="nameStatus">
+              <span *ngSwitchCase="'checking'">Checking…</span>
+              <span *ngSwitchCase="'available'">Available</span>
+              <span *ngSwitchCase="'taken'">Already taken</span>
+              <span *ngSwitchCase="'error'">Try again</span>
+              <span *ngSwitchDefault>&nbsp;</span>
+            </ng-container>
+          </span>
+        </span>
+        <input
+          type="text"
+          formControlName="name"
+          class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-slate-100 transition focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-700"
+          [class.border-red-500]="(nameControl.invalid && nameControl.touched) || isNameTaken"
+          autocomplete="username"
+        />
+      </label>
+
+      <label class="block text-sm font-medium text-slate-300">
+        <span class="mb-1 block">Password</span>
+        <input
+          type="password"
+          formControlName="password"
+          minlength="8"
+          maxlength="128"
+          required
+          autocomplete="new-password"
+          class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-slate-100 transition focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-700"
+          [class.border-red-500]="passwordControl.invalid && passwordControl.touched"
+        />
+        <span class="mt-1 block text-xs text-red-400" *ngIf="passwordControl.touched && passwordControl.hasError('minlength')">
+          Password must be at least 8 characters.
+        </span>
+      </label>
+
+      <label class="block text-sm font-medium text-slate-300">
+        <span class="mb-1 block">Confirm Password</span>
+        <input
+          type="password"
+          formControlName="confirmPassword"
+          minlength="8"
+          maxlength="128"
+          required
+          autocomplete="new-password"
+          class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-slate-100 transition focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-700"
+          [class.border-red-500]="confirmPasswordControl.invalid && confirmPasswordControl.touched"
+        />
+        <span class="mt-1 block text-xs text-red-400" *ngIf="confirmPasswordControl.touched && confirmPasswordControl.hasError('mismatch')">
+          Passwords do not match.
+        </span>
+      </label>
+
+      <button
+        type="submit"
+        class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-slate-500 disabled:cursor-not-allowed disabled:opacity-60"
+        [disabled]="submitting || isNameChecking || isNameTaken"
+      >
+        {{ submitting ? 'Creating account…' : 'Create account' }}
+      </button>
+    </form>
+
+    <p class="mt-4 text-sm text-red-400" *ngIf="error">{{ error }}</p>
+
+    <p class="mt-4 text-sm text-slate-400 text-center">
+      Already have an account?
+      <a routerLink="/dashboard/login" class="font-semibold text-slate-200 hover:text-white">Sign in</a>
+    </p>
+  </div>
+</div>
