@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { CreateEnvironmentRequest, Environment, UpdateEnvironmentPayload } from '../models';
@@ -10,31 +10,19 @@ export class EnvironmentsApiService {
 
   constructor(private readonly http: HttpClient) {}
 
-  listByTab(userId: string, tabId: string): Observable<Environment[]> {
-    return this.http.get<Environment[]>(`${this.baseUrl}/tabs/${tabId}`, {
-      headers: this.userHeaders(userId),
-    });
+  listByTab(tabId: string): Observable<Environment[]> {
+    return this.http.get<Environment[]>(`${this.baseUrl}/tabs/${tabId}`);
   }
 
-  create(userId: string, payload: CreateEnvironmentRequest): Observable<Environment> {
-    return this.http.post<Environment>(this.baseUrl, payload, {
-      headers: this.userHeaders(userId),
-    });
+  create(payload: CreateEnvironmentRequest): Observable<Environment> {
+    return this.http.post<Environment>(this.baseUrl, payload);
   }
 
-  update(userId: string, environmentId: string, payload: UpdateEnvironmentPayload): Observable<Environment> {
-    return this.http.patch<Environment>(`${this.baseUrl}/${environmentId}`, payload, {
-      headers: this.userHeaders(userId),
-    });
+  update(environmentId: string, payload: UpdateEnvironmentPayload): Observable<Environment> {
+    return this.http.patch<Environment>(`${this.baseUrl}/${environmentId}`, payload);
   }
 
-  delete(userId: string, environmentId: string): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/${environmentId}`, {
-      headers: this.userHeaders(userId),
-    });
-  }
-
-  private userHeaders(userId: string): HttpHeaders {
-    return new HttpHeaders({ 'x-user-id': userId });
+  delete(environmentId: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${environmentId}`);
   }
 }

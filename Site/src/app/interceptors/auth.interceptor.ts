@@ -19,22 +19,25 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const requestWithCredentials = req.clone({ withCredentials: true });
   const skipRefresh = requestWithCredentials.context.get(SKIP_AUTH_REFRESH);
 
+  const url = requestWithCredentials.url;
+  const isAdminRequest = url.includes('/api/admin/') || url.includes('/api/debug/');
+  const context: 'admin' | 'dashboard' = isAdminRequest ? 'admin' : 'dashboard';
+
+  const isLoginRequest = url.includes('/api/auth/login');
+  const isRefreshRequest = url.includes('/api/auth/refresh');
+
   return next(requestWithCredentials).pipe(
     catchError((error) => {
-      const isHttpError = error instanceof HttpErrorResponse;
-
-      if (!isHttpError) {
+      if (!(error instanceof HttpErrorResponse)) {
         return throwError(() => error);
       }
 
-      const isLoginRequest = requestWithCredentials.url.includes('/auth/login');
-      const isRefreshRequest = requestWithCredentials.url.includes('/auth/refresh');
       const shouldAttemptRefresh =
         !skipRefresh &&
         !isLoginRequest &&
         !isRefreshRequest &&
         error.status === 401 &&
-        isApiUrl(requestWithCredentials.url);
+        isApiUrl(url);
 
       if (shouldAttemptRefresh) {
         return authService.refreshSession().pipe(
@@ -44,14 +47,14 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
             return next(retried);
           }),
           catchError((refreshError) => {
-            authService.handleAuthFailure();
+            authService.handleAuthFailure(context === 'admin' ? '/admin/login' : '/dashboard/login');
             return throwError(() => refreshError);
           }),
         );
       }
 
-      if (error.status === 401 || error.status === 403) {
-        authService.handleAuthFailure();
+      if (!isLoginRequest && (error.status === 401 || error.status === 403)) {
+        authService.handleAuthFailure(context === 'admin' ? '/admin/login' : '/dashboard/login');
       }
 
       return throwError(() => error);

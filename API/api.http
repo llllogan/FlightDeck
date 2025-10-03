@@ -52,23 +52,19 @@ Accept: application/json
 ### Get User Tab Groups
 GET http://{{host}}/users/tab-groups
 Accept: application/json
-x-user-id: {{hamish}}
 
 ### Get User Summary
 GET http://{{host}}/users/summary
 Accept: application/json
-x-user-id: {{userId}}
 
 ### Get Workspace
 GET http://{{host}}/users/workspace
 Accept: application/json
-x-user-id: {{userId}}
 
 ### Create Tab Group
 POST http://{{host}}/tab-groups
 Content-Type: application/json
 Accept: application/json
-x-user-id: {{userId}}
 
 {
   "title": "Connectwise"
@@ -78,7 +74,6 @@ x-user-id: {{userId}}
 PATCH http://{{host}}/tab-groups/{{tabGroupId}}
 Content-Type: application/json
 Accept: application/json
-x-user-id: {{userId}}
 
 {
   "title": "Updated Tab Group"
@@ -87,23 +82,19 @@ x-user-id: {{userId}}
 ### Delete Tab Group
 DELETE http://{{host}}/tab-groups/{{tabGroupId}}
 Accept: application/json
-x-user-id: {{userId}}
 
 ### Get Tab Group Summary
 GET http://{{host}}/tab-groups/summary
 Accept: application/json
-x-user-id: {{userId}}
 
 ### Get Tabs For Tab Group
 GET http://{{host}}/tab-groups/{{tabGroupId}}/tabs
 Accept: application/json
-x-user-id: {{userId}}
 
 ### Create Tab
 POST http://{{host}}/tabs
 Content-Type: application/json
 Accept: application/json
-x-user-id: {{userId}}
 
 {
   "tabGroupId": "{{tabGroupId}}",
@@ -118,7 +109,6 @@ x-user-id: {{userId}}
 PATCH http://{{host}}/tabs/{{tabId}}
 Content-Type: application/json
 Accept: application/json
-x-user-id: {{userId}}
 
 {
   "title": "Updated Tab"
@@ -127,13 +117,11 @@ x-user-id: {{userId}}
 ### Delete Tab
 DELETE http://{{host}}/tabs/{{tabId}}
 Accept: application/json
-x-user-id: {{userId}}
 
 ### Create Environment
 POST http://{{host}}/environments
 Content-Type: application/json
 Accept: application/json
-x-user-id: {{userId}}
 
 {
   "tabId": "{{tabId}}",
@@ -145,7 +133,6 @@ x-user-id: {{userId}}
 PATCH http://{{host}}/environments/{{environmentId}}
 Content-Type: application/json
 Accept: application/json
-x-user-id: {{userId}}
 
 {
   "name": "Staging",
@@ -155,9 +142,12 @@ x-user-id: {{userId}}
 ### Delete Environment
 DELETE http://{{host}}/environments/{{environmentId}}
 Accept: application/json
-x-user-id: {{userId}}
 
 ### List Environments For Tab
 GET http://{{host}}/environments/tabs/{{tabId}}
 Accept: application/json
-x-user-id: {{userId}}
+
+### Debug: List all users (admin only)
+GET http://{{host}}/debug/users
+Accept: application/json
+Authorization: Bearer <access_token_here>

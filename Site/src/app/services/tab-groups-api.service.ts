@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import {
@@ -18,50 +18,32 @@ export class TabGroupsApiService {
 
   constructor(private readonly http: HttpClient) {}
 
-  listTabGroups(userId: string): Observable<TabGroup[]> {
-    return this.http.get<TabGroup[]>(this.baseUrl, {
-      headers: this.userHeaders(userId),
-    });
+  listTabGroups(): Observable<TabGroup[]> {
+    return this.http.get<TabGroup[]>(this.baseUrl);
   }
 
-  createTabGroup(userId: string, payload: CreateTabGroupPayload): Observable<TabGroup> {
-    return this.http.post<TabGroup>(this.baseUrl, payload, {
-      headers: this.userHeaders(userId),
-    });
+  createTabGroup(payload: CreateTabGroupPayload): Observable<TabGroup> {
+    return this.http.post<TabGroup>(this.baseUrl, payload);
   }
 
-  renameTabGroup(userId: string, tabGroupId: string, payload: RenameTabGroupPayload): Observable<TabGroup> {
-    return this.http.patch<TabGroup>(`${this.baseUrl}/${tabGroupId}`, payload, {
-      headers: this.userHeaders(userId),
-    });
+  renameTabGroup(tabGroupId: string, payload: RenameTabGroupPayload): Observable<TabGroup> {
+    return this.http.patch<TabGroup>(`${this.baseUrl}/${tabGroupId}`, payload);
   }
 
-  moveTabGroup(userId: string, tabGroupId: string, direction: MoveDirection): Observable<void> {
+  moveTabGroup(tabGroupId: string, direction: MoveDirection): Observable<void> {
     const payload: MoveTabGroupPayload = { direction };
-    return this.http.post<void>(`${this.baseUrl}/${tabGroupId}/move`, payload, {
-      headers: this.userHeaders(userId),
-    });
+    return this.http.post<void>(`${this.baseUrl}/${tabGroupId}/move`, payload);
   }
 
-  deleteTabGroup(userId: string, tabGroupId: string): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/${tabGroupId}`, {
-      headers: this.userHeaders(userId),
-    });
+  deleteTabGroup(tabGroupId: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${tabGroupId}`);
   }
 
-  getSummary(userId: string): Observable<TabGroupSummary[]> {
-    return this.http.get<TabGroupSummary[]>(`${this.baseUrl}/summary`, {
-      headers: this.userHeaders(userId),
-    });
+  getSummary(): Observable<TabGroupSummary[]> {
+    return this.http.get<TabGroupSummary[]>(`${this.baseUrl}/summary`);
   }
 
-  listTabsForGroup(userId: string, tabGroupId: string): Observable<Tab[]> {
-    return this.http.get<Tab[]>(`${this.baseUrl}/${tabGroupId}/tabs`, {
-      headers: this.userHeaders(userId),
-    });
-  }
-
-  private userHeaders(userId: string): HttpHeaders {
-    return new HttpHeaders({ 'x-user-id': userId });
+  listTabsForGroup(tabGroupId: string): Observable<Tab[]> {
+    return this.http.get<Tab[]>(`${this.baseUrl}/${tabGroupId}/tabs`);
   }
 }

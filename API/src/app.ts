@@ -10,6 +10,7 @@ import environmentRoutes from './routes/environments';
 import faviconRoutes from './routes/favicons';
 import searchRoutes from './routes/search';
 import authRoutes from './routes/auth';
+import debugRoutes from './routes/debug';
 import adminRoutes from './routes/admin';
 
 const app = express();
@@ -39,6 +40,8 @@ apiRouter.get('/', (_req: Request, res: Response) => {
 });
 
 apiRouter.use('/auth', authRoutes);
+apiRouter.use('/debug', debugRoutes);
+apiRouter.use('/debug', debugRoutes);
 apiRouter.use('/health', healthRoutes);
 apiRouter.use('/consts', constsRoutes);
 apiRouter.use('/users', userRoutes);

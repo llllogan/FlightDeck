@@ -78,11 +78,6 @@ export async function login(req: LoginRequest, res: AuthResponse): Promise<void>
       return;
     }
 
-    if ((user.role ?? '').toLowerCase() !== 'admin') {
-      res.status(403).json({ error: 'Admin privileges required.' });
-      return;
-    }
-
     const passwordMatches = await compare(sanitizedPassword, user.passwordHash);
 
     if (!passwordMatches) {
@@ -138,13 +133,6 @@ export async function refreshToken(req: Request, res: AuthResponse): Promise<voi
     if (!user) {
       await withRefreshTable(() => deleteRefreshToken(tokenHash));
       respondWithInvalidRefresh(res, 'Invalid refresh token.');
-      return;
-    }
-
-    if ((user.role ?? '').toLowerCase() !== 'admin') {
-      await withRefreshTable(() => deleteRefreshToken(tokenHash));
-      clearAuthCookies(res);
-      res.status(403).json({ error: 'Admin privileges required.' });
       return;
     }
 

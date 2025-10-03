@@ -42,7 +42,7 @@ export class AuthService {
       );
   }
 
-  logout(options: { redirectToLogin?: boolean } = { redirectToLogin: true }): Observable<void> {
+  logout(options: { redirectTo?: string | false } = {}): Observable<void> {
     const context = new HttpContext().set(SKIP_AUTH_REFRESH, true);
     this.clearSession();
 
@@ -51,8 +51,9 @@ export class AuthService {
       .pipe(
         catchError(() => of({ success: false as const })),
         tap(() => {
-          if (options.redirectToLogin !== false) {
-            void this.router.navigate(['/admin/login']);
+          const redirectTo = options.redirectTo ?? '/admin/login';
+          if (redirectTo !== false) {
+            void this.router.navigate([redirectTo]);
           }
         }),
         map(() => void 0),
@@ -108,11 +109,13 @@ export class AuthService {
     return role ? role.toLowerCase() === 'admin' : false;
   }
 
-  handleAuthFailure(redirectToLogin: boolean = true): void {
+  handleAuthFailure(redirect: boolean | string = true): void {
     this.clearSession();
-    if (redirectToLogin) {
-      void this.router.navigate(['/admin/login']);
+    if (redirect === false) {
+      return;
     }
+    const target = typeof redirect === 'string' ? redirect : '/admin/login';
+    void this.router.navigate([target]);
   }
 
   private setSession(user: StoredAuthUser): void {
