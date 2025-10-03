@@ -17,6 +17,15 @@ export const routes: Routes = [
     loadComponent: () => import('./dashboard/dashboard-login.component').then((m) => m.DashboardLoginComponent),
   },
   {
+    path: '',
+    pathMatch: 'full',
+    loadComponent: () => import('./auth/legacy-redirect.component').then((m) => m.LegacyRedirectComponent),
+  },
+  {
+    path: 'password-reset',
+    loadComponent: () => import('./auth/password-reset.component').then((m) => m.PasswordResetComponent),
+  },
+  {
     path: 'dashboard',
     canActivate: [dashboardAuthGuard],
     loadComponent: () => import('./workspace/workspace.component').then((m) => m.WorkspaceComponent),

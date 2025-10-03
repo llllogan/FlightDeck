@@ -86,6 +86,10 @@ export async function getUserWithPasswordByName(name: string): Promise<UserAuthR
   return fetchSingleFromProcedure<UserAuthRecord>('get_user_with_password_by_name', [name]);
 }
 
+export async function getUserWithPasswordById(userId: string): Promise<UserAuthRecord | undefined> {
+  return fetchSingleFromProcedure<UserAuthRecord>('get_user_with_password_by_id', [userId]);
+}
+
 export async function getUserByName(name: string): Promise<UserRecord | undefined> {
   return fetchSingleFromProcedure<UserRecord>('get_user_by_name', [name]);
 }

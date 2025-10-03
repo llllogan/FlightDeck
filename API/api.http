@@ -17,6 +17,11 @@ Accept: application/json
   "password": "admin-password"
 }
 
+### Legacy User Detection
+GET http://{{host}}/auth/legacy-user
+Accept: application/json
+x-user-id: {{userId}}
+
 ### Refresh Access Token
 POST http://{{host}}/auth/refresh
 Content-Type: application/json
@@ -24,6 +29,17 @@ Accept: application/json
 
 {
   "refreshToken": "<refresh_token_here>"
+}
+
+### Legacy Password Reset
+POST http://{{host}}/auth/legacy-password-reset
+Content-Type: application/json
+Accept: application/json
+x-user-id: {{userId}}
+
+{
+  "password": "new-strong-password",
+  "confirmPassword": "new-strong-password"
 }
 
 ### Admin List Users (requires Bearer token)

@@ -383,6 +383,22 @@ BEGIN
      LIMIT 1;
 END $$
 
+DROP PROCEDURE IF EXISTS get_user_with_password_by_id $$
+CREATE PROCEDURE get_user_with_password_by_id (
+    IN p_user_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+)
+BEGIN
+    SELECT id,
+           name,
+           role,
+           passwordHash,
+           createdAt,
+           updatedAt
+      FROM users
+     WHERE id = p_user_id
+     LIMIT 1;
+END $$
+
 DROP PROCEDURE IF EXISTS list_users $$
 CREATE PROCEDURE list_users ()
 BEGIN

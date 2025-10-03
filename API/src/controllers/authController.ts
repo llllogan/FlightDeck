@@ -1,9 +1,12 @@
 import type { Request, Response } from 'express';
-import { compare } from 'bcryptjs';
+import { compare, hash } from 'bcryptjs';
 import {
   getUserById as getUserByIdFromDb,
   getUserWithPasswordByName,
+  getUserWithPasswordById,
   type UserAuthRecord,
+  type UserRecord,
+  updateUser,
 } from '../db/resourceAccess';
 import {
   accessTtlSeconds,
@@ -18,6 +21,7 @@ import {
   saveRefreshToken,
 } from '../db/refreshTokens';
 import { sanitizeTextInput } from '../utils/sanitizers';
+import { extractLegacyUserId } from '../utils/legacyUserHeader';
 import {
   clearAuthCookies,
   getRefreshTokenFromCookies,
@@ -41,7 +45,10 @@ async function withRefreshTable<T>(operation: () => Promise<T>): Promise<T> {
   return operation();
 }
 
-function buildSessionPayload(user: UserAuthRecord, options?: { refreshExpiresAt?: Date }): AuthSessionResponse {
+function buildSessionPayload(
+  user: UserAuthRecord | UserRecord,
+  options?: { refreshExpiresAt?: Date },
+): AuthSessionResponse {
   const now = Date.now();
   const accessExpiresAt = new Date(now + accessTtlSeconds * 1000);
 
@@ -99,6 +106,110 @@ export async function login(req: LoginRequest, res: AuthResponse): Promise<void>
   } catch (error) {
     console.error('Failed to log in user', error);
     res.status(500).json({ error: 'Failed to log in.' });
+  }
+}
+
+export async function getLegacyUser(req: Request, res: Response<LegacyUserResponse | { error: string }>): Promise<void> {
+  const legacyUserId = extractLegacyUserId(req);
+
+  if (!legacyUserId) {
+    res.status(204).send();
+    return;
+  }
+
+  try {
+    const user = await getUserByIdFromDb(legacyUserId);
+
+    if (!user) {
+      respondWithLegacyNotFound(res);
+      return;
+    }
+
+    const userWithPassword = await getUserWithPasswordById(legacyUserId);
+
+    if (userWithPassword?.passwordHash) {
+      res.status(204).send();
+      return;
+    }
+
+    res.json({
+      user: {
+        id: user.id,
+        name: user.name,
+      },
+    });
+  } catch (error) {
+    console.error('Failed to load legacy user', error);
+    res.status(500).json({ error: 'Failed to load legacy user.' });
+  }
+}
+
+export async function completeLegacyPasswordReset(
+  req: Request<Record<string, never>, unknown, { password?: string; confirmPassword?: string }>,
+  res: AuthResponse,
+): Promise<void> {
+  const legacyUserId = extractLegacyUserId(req);
+
+  if (!legacyUserId) {
+    res.status(400).json({ error: 'Missing legacy user header.' });
+    return;
+  }
+
+  const { password, confirmPassword } = req.body ?? {};
+
+  const sanitizedPassword = sanitizeNewPassword(password);
+  const sanitizedConfirmPassword = sanitizePassword(confirmPassword);
+
+  if (!sanitizedPassword || !sanitizedConfirmPassword || sanitizedPassword !== sanitizedConfirmPassword) {
+    res.status(400).json({ error: 'Passwords must match and be at least 8 characters.' });
+    return;
+  }
+
+  try {
+    const userWithPassword = await getUserWithPasswordById(legacyUserId);
+
+    if (!userWithPassword) {
+      respondWithLegacyNotFound(res);
+      return;
+    }
+
+    if (userWithPassword.passwordHash) {
+      res.status(400).json({ error: 'Legacy password reset is no longer available for this user.' });
+      return;
+    }
+
+    const passwordHash = await hash(sanitizedPassword, 10);
+
+    await updateUser(legacyUserId, {
+      name: undefined,
+      role: undefined,
+      passwordHash,
+      updateName: false,
+      updateRole: false,
+      updatePassword: true,
+    });
+
+    const refreshedUser = await getUserByIdFromDb(legacyUserId);
+
+    if (!refreshedUser) {
+      respondWithLegacyNotFound(res);
+      return;
+    }
+
+    const accessToken = generateAccessToken(refreshedUser);
+    const refreshTokenDetails = generateRefreshToken();
+
+    await withRefreshTable(() =>
+      saveRefreshToken(refreshedUser.id, hashRefreshToken(refreshTokenDetails.token), refreshTokenDetails.expiresAt),
+    );
+
+    setAccessCookie(res, accessToken);
+    setRefreshCookie(res, refreshTokenDetails.token);
+
+    res.json(buildSessionPayload(refreshedUser, { refreshExpiresAt: refreshTokenDetails.expiresAt }));
+  } catch (error) {
+    console.error('Failed to complete legacy password reset', error);
+    res.status(500).json({ error: 'Failed to reset password.' });
   }
 }
 
@@ -192,4 +303,28 @@ export function getSession(req: Request, res: AuthResponse): void {
       role: authUser.role,
     },
   });
+}
+interface LegacyUserResponse {
+  user: {
+    id: string;
+    name: string;
+  };
+}
+
+function respondWithLegacyNotFound(res: Response): void {
+  res.status(404).json({ error: 'Legacy user not found.' });
+}
+
+function sanitizeNewPassword(password?: string): string | null {
+  const sanitized = sanitizePassword(password);
+  if (!sanitized) {
+    return null;
+  }
+
+  const trimmed = sanitized.trim();
+  if (trimmed.length < 8) {
+    return null;
+  }
+
+  return trimmed;
 }
