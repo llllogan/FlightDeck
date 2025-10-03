@@ -8,6 +8,8 @@ import { AuthService } from '../services/auth.service';
 import { AdminSessionsApiService } from '../services/admin-sessions-api.service';
 import { AdminSession, ApiUser } from '../models';
 import { MatTableModule } from '@angular/material/table';
+import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
+import { filter } from 'rxjs/operators';
 
 @Component({
   selector: 'app-admin-users',
@@ -63,9 +65,20 @@ export class AdminUsersComponent implements OnInit {
     private readonly adminSessionsApi: AdminSessionsApiService,
     private readonly formBuilder: FormBuilder,
     private readonly authService: AuthService,
+    private readonly route: ActivatedRoute,
+    private readonly router: Router,
   ) {}
 
   ngOnInit(): void {
+    this.router.events
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      )
+      .subscribe(() => this.syncTabFromRoute());
+
+    this.syncTabFromRoute();
+
     this.fetchUsers();
     this.fetchSessions();
   }
@@ -80,6 +93,11 @@ export class AdminUsersComponent implements OnInit {
     }
 
     this.activeTab = tab;
+
+    void this.router.navigate(['../', tab], {
+      relativeTo: this.route,
+      replaceUrl: true,
+    });
 
     if (tab === 'sessions' && !this.sessionsLoaded) {
       this.fetchSessions();
@@ -385,6 +403,19 @@ export class AdminUsersComponent implements OnInit {
 
     if (formElement.contains(activeElement)) {
       activeElement.blur();
+    }
+  }
+
+  private syncTabFromRoute(): void {
+    const lastSegment = this.route.snapshot.url.at(-1)?.path ?? 'users';
+    const requestedTab = lastSegment === 'sessions' ? 'sessions' : 'users';
+
+    if (this.activeTab !== requestedTab) {
+      this.activeTab = requestedTab;
+
+      if (requestedTab === 'sessions' && !this.sessionsLoaded) {
+        this.fetchSessions();
+      }
     }
   }
 }
