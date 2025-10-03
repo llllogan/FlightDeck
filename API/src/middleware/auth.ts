@@ -44,6 +44,7 @@ export function requireAuth(options: { requireAdmin?: boolean } = {}) {
         name: decoded.name,
         role: decoded.role,
       };
+      req.userId = decoded.sub;
 
       if (options.requireAdmin && (decoded.role ?? '').toLowerCase() !== 'admin') {
         res.status(403).json({ error: 'Admin privileges required' });

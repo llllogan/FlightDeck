@@ -31,13 +31,14 @@ export class LoginComponent implements OnInit {
   private redirectTo = '/admin';
 
   ngOnInit(): void {
-    const redirectParam = this.route.snapshot.queryParamMap.get('redirectTo');
-    if (redirectParam) {
-      this.redirectTo = redirectParam;
-    }
+    this.redirectTo = this.authService.resolveRedirectPath(
+      this.route.snapshot.queryParamMap.get('redirectTo'),
+      '/admin',
+      ['/admin'],
+    );
 
     this.authService
-      .ensureSession()
+      .ensureSession('admin')
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((isValid) => {
         if (isValid && this.authService.isAdmin()) {

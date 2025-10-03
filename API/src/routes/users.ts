@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import { getUserSummary, getUserTabGroups, getUserWorkspace } from '../controllers/usersController';
-import { requireUserId } from '../middleware/userContext';
+import { requireAuth } from '../middleware/auth';
 
 const router = Router();
 
-router.use(requireUserId);
+router.use(requireAuth());
 router.get('/tab-groups', getUserTabGroups);
 router.get('/summary', getUserSummary);
 router.get('/workspace', getUserWorkspace);

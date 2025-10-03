@@ -31,10 +31,10 @@ export class DashboardLoginComponent implements OnInit {
   private redirectTo = '/dashboard';
 
   ngOnInit(): void {
-    const redirectParam = this.route.snapshot.queryParamMap.get('redirectTo');
-    if (redirectParam) {
-      this.redirectTo = redirectParam;
-    }
+    this.redirectTo = this.authService.resolveRedirectPath(
+      this.route.snapshot.queryParamMap.get('redirectTo'),
+      '/dashboard',
+    );
 
     this.authService
       .ensureSession()

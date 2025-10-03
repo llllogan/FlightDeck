@@ -12,16 +12,20 @@ function isApiUrl(url: string): boolean {
   return url.startsWith(environment.apiBaseUrl);
 }
 
+export type AuthContext = 'admin' | 'dashboard';
+
 export const SKIP_AUTH_REFRESH = new HttpContextToken<boolean>(() => false);
+export const AUTH_CONTEXT = new HttpContextToken<AuthContext>(() => 'dashboard');
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
   const requestWithCredentials = req.clone({ withCredentials: true });
   const skipRefresh = requestWithCredentials.context.get(SKIP_AUTH_REFRESH);
+  const requestContext = requestWithCredentials.context.get(AUTH_CONTEXT);
 
   const url = requestWithCredentials.url;
   const isAdminRequest = url.includes('/api/admin/') || url.includes('/api/debug/');
-  const context: 'admin' | 'dashboard' = isAdminRequest ? 'admin' : 'dashboard';
+  const context: AuthContext = requestContext ?? (isAdminRequest ? 'admin' : 'dashboard');
 
   const isLoginRequest = url.includes('/api/auth/login');
   const isRefreshRequest = url.includes('/api/auth/refresh');

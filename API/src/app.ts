@@ -21,7 +21,7 @@ const configuredOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map((origin) => origin.trim()).filter(Boolean)
   : defaultOrigins;
 
-const allowedHeaders = ['Content-Type', 'x-user-id', 'Authorization'];
+const allowedHeaders = ['Content-Type', 'Authorization'];
 
 const corsOptions = {
   origin: configuredOrigins.includes('*') ? true : configuredOrigins,
