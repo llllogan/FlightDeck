@@ -11,27 +11,9 @@ jobs:
     name: Deploy Site (test)
     runs-on: [self-hosted]
     environment:
-      name: test
-    steps:
-      - name: Hit Coolify deploy endpoint (test)
-        env:
-          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
-          URL: ${{ vars.DEPLOY_SITE_URL }}
-        run: |
-          curl --fail --show-error --silent \
-               --retry 1 --retry-delay 2 --retry-connrefused \
-               -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
-               "$URL"
-
-  deploy-prod:
-    name: Deploy Site (prod)
-    runs-on: [self-hosted]
-    needs: deploy-test
-    if: github.ref == 'refs/heads/master'
-    environment:
       name: production
     steps:
-      - name: Hit Coolify deploy endpoint (prod)
+      - name: Hit Coolify deploy endpoint (test)
         env:
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
           URL: ${{ vars.DEPLOY_SITE_URL }}
