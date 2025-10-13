@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -29,6 +29,7 @@ export class SignUpComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   readonly signUpForm = this.fb.nonNullable.group({
     name: ['', [Validators.required, Validators.maxLength(100)]],
@@ -45,23 +46,25 @@ export class SignUpComponent implements OnInit {
       .pipe(
         takeUntilDestroyed(this.destroyRef),
         map((value) => value.trim()),
+        distinctUntilChanged(),
         tap((value) => {
           if (!value) {
-            this.nameStatus = 'idle';
+            this.updateNameStatus('idle');
           } else {
-            this.nameStatus = 'checking';
+            this.updateNameStatus('checking');
           }
         }),
-        debounceTime(300),
-        distinctUntilChanged(),
+        debounceTime(250),
         switchMap((value) => {
-          if (!value) {
-            return of(null);
+          const trimmed = value.trim();
+          if (!trimmed) {
+            return of<{ available: boolean; value: string } | null>(null);
           }
-          return this.authService.checkUsernameAvailability(value).pipe(
-            map((available) => ({ available, value })),
+
+          return this.authService.checkUsernameAvailability(trimmed).pipe(
+            map((available) => ({ available, value: trimmed })),
             catchError(() => {
-              this.nameStatus = 'error';
+              this.updateNameStatus('error');
               return of(null);
             }),
           );
@@ -71,7 +74,12 @@ export class SignUpComponent implements OnInit {
         if (!result) {
           return;
         }
-        this.nameStatus = result.available ? 'available' : 'taken';
+
+        if (result.value !== this.signUpForm.controls.name.value.trim()) {
+          return;
+        }
+
+        this.updateNameStatus(result.available ? 'available' : 'taken');
       });
 
     this.passwordControl.valueChanges
@@ -104,13 +112,16 @@ export class SignUpComponent implements OnInit {
     this.submitting = true;
     this.error = null;
 
+    this.updateNameStatus('checking');
+
     this.authService
       .checkUsernameAvailability(name)
       .pipe(take(1))
       .subscribe({
         next: (available) => {
+          this.updateNameStatus(available ? 'available' : 'taken');
+
           if (!available) {
-            this.nameStatus = 'taken';
             this.submitting = false;
             return;
           }
@@ -127,13 +138,14 @@ export class SignUpComponent implements OnInit {
                 void this.router.navigate(['/dashboard']);
               },
               error: (err) => {
+                this.updateNameStatus('error');
                 const message = (err?.error?.error as string | undefined) || err?.message;
                 this.error = message ?? 'Could not create account. Please try again.';
               },
             });
         },
         error: () => {
-          this.nameStatus = 'error';
+          this.updateNameStatus('error');
           this.error = 'Unable to verify username. Please try again.';
           this.submitting = false;
         },
@@ -167,14 +179,14 @@ export class SignUpComponent implements OnInit {
   get nameStatusClass(): string {
     switch (this.nameStatus) {
       case 'checking':
-        return 'text-amber-400';
+        return 'text-amber-500 dark:text-amber-300';
       case 'available':
-        return 'text-slate-300';
+        return 'text-emerald-600 dark:text-emerald-300';
       case 'taken':
       case 'error':
-        return 'text-red-400';
+        return 'text-red-500 dark:text-red-400';
       default:
-        return 'text-slate-400';
+        return 'text-slate-400 dark:text-slate-500';
     }
   }
 
@@ -194,5 +206,14 @@ export class SignUpComponent implements OnInit {
     }
 
     this.confirmPasswordControl.setErrors(Object.keys(errors).length > 0 ? errors : null);
+  }
+
+  private updateNameStatus(status: NameStatus): void {
+    if (this.nameStatus === status) {
+      return;
+    }
+
+    this.nameStatus = status;
+    this.cdr.markForCheck();
   }
 }

@@ -36,5 +36,15 @@
     </form>
 
     <p class="mt-4 text-sm text-red-500 dark:text-red-300" *ngIf="error">{{ error }}</p>
+
+    <p class="mt-6 text-sm text-slate-500 text-center dark:text-slate-400">
+      Don't have an account?
+      <a
+        routerLink="/sign-up"
+        class="font-semibold text-slate-900 underline-offset-4 hover:underline dark:text-slate-100"
+      >
+        Create one now
+      </a>
+    </p>
   </div>
 </div>
