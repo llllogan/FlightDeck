@@ -1,6 +1,6 @@
-import { Request, Response } from 'express';
+import type { Request, Response } from 'express';
 import { hash as hashPassword } from 'bcryptjs';
-import { callStoredProcedure, querySingle } from '../db/helpers';
+import { callStoredProcedure, fetchSingleFromProcedure } from '../db/helpers';
 import type { CreateUserRequest, UpdateUserRequest } from '../models/requestBodies';
 import type { UserRecord } from '../db/resourceAccess';
 import {
@@ -9,6 +9,7 @@ import {
   listTabsForTabGroup,
   listEnvironmentsForTab,
   getUserById as getUserByIdFromDb,
+  getUserByName as getUserByNameFromDb,
   updateUser as updateUserInDb,
 } from '../db/resourceAccess';
 import {
@@ -21,33 +22,16 @@ import {
   type UserSummaryRow as UserSummaryRowData,
 } from '../serializers';
 import { sanitizeOptionalTextInput, sanitizeTextInput } from '../utils/sanitizers';
-
-type CreateUserRequestHandler = Request<Record<string, never>, unknown, Partial<CreateUserRequest>>;
-type UpdateUserRequestHandler = Request<{ userId: string }, Record<string, never>, Partial<UpdateUserRequest>>;
-
-type EmptyRequest = Request;
-
-type SerializedUserSummary = ReturnType<typeof serializeUserSummary>;
-type SerializedTabGroup = ReturnType<typeof serializeTabGroup>;
-type SerializedTab = ReturnType<typeof serializeTab>;
-type SerializedEnvironment = ReturnType<typeof serializeEnvironment>;
-
-type WorkspaceTab = SerializedTab & { environments: SerializedEnvironment[] };
-type WorkspaceTabGroup = SerializedTabGroup & { tabs: WorkspaceTab[] };
-type WorkspacePayload = {
-  summary: SerializedUserSummary | null;
-  tabGroups: WorkspaceTabGroup[];
-};
-type WorkspaceResponse = Response<WorkspacePayload | { error: string }>;
-
-type SummaryResponse = Response<SerializedUserSummary | { error: string }>;
-
-type TabGroupsResponse = Response<SerializedTabGroup[] | { error: string }>;
-
-type SerializedUser = ReturnType<typeof serializeUser>;
-type StandardResponse = Response<SerializedUser | Record<string, unknown>>;
-
-type UsersResponse = Response<SerializedUser[] | { error: string }>;
+import type {
+  CreateUserRequestHandler,
+  UpdateUserRequestHandler,
+  EmptyRequest,
+  UsersResponse,
+  StandardResponse,
+  SummaryResponse,
+  TabGroupsResponse,
+  WorkspaceResponse,
+} from '../types/controllers/users';
 
 const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -118,19 +102,20 @@ async function createUser(req: CreateUserRequestHandler, res: StandardResponse):
       return;
     }
 
-    await callStoredProcedure('create_user', [sanitizedName, sanitizedRole ?? null, passwordHash]);
+    const createdUser = await fetchSingleFromProcedure<UserRecord>('create_user', [
+      sanitizedName,
+      sanitizedRole ?? null,
+      passwordHash,
+    ]);
 
-    const createdUser = await querySingle<UserRecord>(
-      'SELECT id, name, role, createdAt, updatedAt FROM users WHERE name = ? ORDER BY createdAt DESC LIMIT 1',
-      [sanitizedName],
-    );
+    const hydratedUser = createdUser ?? (await getUserByNameFromDb(sanitizedName));
 
-    if (!createdUser) {
+    if (!hydratedUser) {
       res.status(201).json({ message: 'User created but could not retrieve record' });
       return;
     }
 
-    res.status(201).json(serializeUser(createdUser));
+    res.status(201).json(serializeUser(hydratedUser));
   } catch (error) {
     console.error('Failed to create user', error);
     res.status(500).json({ error: 'Failed to create user' });
@@ -234,10 +219,7 @@ async function deleteUserById(req: Request<{ userId: string }>, res: Response): 
   }
 
   try {
-    const existingUser = await querySingle<UserRecord>(
-      'SELECT id, name, role, createdAt, updatedAt FROM users WHERE id = ?',
-      [userId],
-    );
+    const existingUser = await getUserByIdFromDb(userId);
 
     if (!existingUser) {
       res.status(404).json({ error: 'User not found' });
@@ -260,10 +242,7 @@ async function getUserSummary(req: Request, res: SummaryResponse): Promise<void>
   }
 
   try {
-    const summary = await querySingle<UserSummaryRowData>(
-      'SELECT * FROM user_hierarchy_summary_view WHERE userId = ?',
-      [userId],
-    );
+    const summary = await fetchSingleFromProcedure<UserSummaryRowData>('get_user_summary', [userId]);
 
     if (!summary) {
       res.status(404).json({ error: 'User not found' });
@@ -304,10 +283,7 @@ async function getUserWorkspace(req: Request, res: WorkspaceResponse): Promise<v
 
   try {
     const [summaryRow, tabGroupRows] = await Promise.all([
-      querySingle<UserSummaryRowData>(
-        'SELECT * FROM user_hierarchy_summary_view WHERE userId = ?',
-        [userId],
-      ),
+      fetchSingleFromProcedure<UserSummaryRowData>('get_user_summary', [userId]),
       listTabGroupsForUser(userId),
     ]);
 

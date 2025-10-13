@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { finalize } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -10,7 +10,7 @@ import { AuthService } from '../services/auth.service';
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink],
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.css'],
 })
@@ -31,13 +31,14 @@ export class LoginComponent implements OnInit {
   private redirectTo = '/admin';
 
   ngOnInit(): void {
-    const redirectParam = this.route.snapshot.queryParamMap.get('redirectTo');
-    if (redirectParam) {
-      this.redirectTo = redirectParam;
-    }
+    this.redirectTo = this.authService.resolveRedirectPath(
+      this.route.snapshot.queryParamMap.get('redirectTo'),
+      '/admin',
+      ['/admin'],
+    );
 
     this.authService
-      .ensureValidAccessToken()
+      .ensureSession('admin')
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((isValid) => {
         if (isValid && this.authService.isAdmin()) {

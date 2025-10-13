@@ -1,10 +1,14 @@
 name: Deploy Database Schema
 
 on:
+  push:
+    paths:
+      - 'DB/**'
   workflow_dispatch:
 
 jobs:
-  migrate-and-seed:
+  migrate-and-seed-test:
+    name: Migrate and seed (test)
     runs-on: self-hosted
     environment:
       name: production
@@ -64,3 +68,16 @@ jobs:
             --port="${{ secrets.DB_PORT }}" \
             --user="${{ secrets.DB_USER }}" \
             "${{ secrets.DB_NAME }}" < sql/stored_procs.sql
+
+      - name: List tables
+        env:
+          MYSQL_PWD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          mysql \
+            --host="${{ secrets.DB_HOST }}" \
+            --port="${{ secrets.DB_PORT }}" \
+            --user="${{ secrets.DB_USER }}" \
+            --batch \
+            --skip-column-names \
+            --execute="SHOW TABLES" \
+            "${{ secrets.DB_NAME }}"

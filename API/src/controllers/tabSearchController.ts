@@ -1,39 +1,14 @@
-import { Request, Response } from 'express';
-import type { ParsedQs } from 'qs';
-import { searchTabsForUser, type TabSearchViewRow } from '../db/resourceAccess';
+import type { Request, Response } from 'express';
+import { searchTabsForUser } from '../db/resourceAccess';
 import { sanitizeTextInput } from '../utils/sanitizers';
+import type {
+  SearchQuery,
+  SearchTabsResponse,
+  TabSearchResult,
+  TabSearchRows,
+} from '../types/controllers/tabSearch';
 
-interface TabSearchEnvironment {
-  id: string;
-  name: string;
-  url: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-interface TabSearchResult {
-  tab: {
-    id: string;
-    title: string;
-    sortOrder: number;
-    createdAt: Date;
-    updatedAt: Date;
-  };
-  tabGroup: {
-    id: string;
-    title: string;
-    sortOrder: number;
-    createdAt: Date;
-    updatedAt: Date;
-  };
-  environments: TabSearchEnvironment[];
-}
-
-type SearchTabsResponse = Response<TabSearchResult[] | { error: string }>;
-
-type SearchQuery = string | ParsedQs | (string | ParsedQs)[] | undefined;
-
-function buildSearchResults(rows: TabSearchViewRow[]): TabSearchResult[] {
+function buildSearchResults(rows: TabSearchRows): TabSearchResult[] {
   const results = new Map<string, TabSearchResult>();
 
   for (const row of rows) {

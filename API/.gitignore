@@ -7,6 +7,7 @@ pnpm-lock.yaml
 
 # Env
 .env
+.env.prod
 
 # Logs
 logs/
@@ -24,3 +25,4 @@ pids/
 .DS_Store
 
 dist/
+

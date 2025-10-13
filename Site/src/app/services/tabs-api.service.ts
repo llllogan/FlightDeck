@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import {
@@ -19,32 +19,20 @@ export class TabsApiService {
 
   constructor(private readonly http: HttpClient) {}
 
-  createTab(userId: string, payload: CreateTabPayload): Observable<TabCreateResponse> {
-    return this.http.post<TabCreateResponse>(this.baseUrl, payload, {
-      headers: this.userHeaders(userId),
-    });
+  createTab(payload: CreateTabPayload): Observable<TabCreateResponse> {
+    return this.http.post<TabCreateResponse>(this.baseUrl, payload);
   }
 
-  renameTab(userId: string, tabId: string, payload: RenameTabPayload): Observable<Tab> {
-    return this.http.patch<Tab>(`${this.baseUrl}/${tabId}`, payload, {
-      headers: this.userHeaders(userId),
-    });
+  renameTab(tabId: string, payload: RenameTabPayload): Observable<Tab> {
+    return this.http.patch<Tab>(`${this.baseUrl}/${tabId}`, payload);
   }
 
-  moveTab(userId: string, tabId: string, direction: MoveDirection): Observable<void> {
+  moveTab(tabId: string, direction: MoveDirection): Observable<void> {
     const payload: MoveTabPayload = { direction };
-    return this.http.post<void>(`${this.baseUrl}/${tabId}/move`, payload, {
-      headers: this.userHeaders(userId),
-    });
+    return this.http.post<void>(`${this.baseUrl}/${tabId}/move`, payload);
   }
 
-  deleteTab(userId: string, tabId: string): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/${tabId}`, {
-      headers: this.userHeaders(userId),
-    });
-  }
-
-  private userHeaders(userId: string): HttpHeaders {
-    return new HttpHeaders({ 'x-user-id': userId });
+  deleteTab(tabId: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${tabId}`);
   }
 }

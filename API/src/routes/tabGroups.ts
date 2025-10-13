@@ -8,12 +8,12 @@ import {
   getTabGroupSummary,
   listTabsForGroup,
 } from '../controllers/tabGroupsController';
-import { requireUserId } from '../middleware/userContext';
+import { requireAuth } from '../middleware/auth';
 import { requireTabGroupAccess } from '../middleware/resourceAccess';
 
 const router = Router();
 
-router.use(requireUserId);
+router.use(requireAuth());
 router.get('/', listTabGroups);
 router.post('/', createTabGroup);
 router.get('/summary', getTabGroupSummary);

@@ -2,19 +2,21 @@ name: Trigger Coolify Site Deploy
 
 on:
   push:
-    branches: [ "master" ]
     paths:
       - 'Site/**'
   workflow_dispatch:
 
 jobs:
-  call-coolify:
+  deploy-test:
+    name: Deploy Site (test)
     runs-on: [self-hosted]
+    environment:
+      name: production
     steps:
-      - name: Hit Coolify deploy endpoint
+      - name: Hit Coolify deploy endpoint (test)
         env:
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
-          URL: "http://10.10.10.9:8000/api/v1/deploy?uuid=fkgg4sk8s4k0kwcwos8ccs0c&force=false"
+          URL: ${{ vars.DEPLOY_SITE_URL }}
         run: |
           curl --fail --show-error --silent \
                --retry 1 --retry-delay 2 --retry-connrefused \

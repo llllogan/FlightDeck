@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import { createTab, renameTab, deleteTab, moveTab } from '../controllers/tabsController';
-import { requireUserId } from '../middleware/userContext';
+import { requireAuth } from '../middleware/auth';
 import { requireTabAccess, requireTabGroupAccess } from '../middleware/resourceAccess';
 
 const router = Router();
 
-router.use(requireUserId);
+router.use(requireAuth());
 router.post(
   '/',
   requireTabGroupAccess({ idSource: 'body', idKey: 'tabGroupId', missingMessage: 'tabGroupId is required' }),

@@ -6,6 +6,15 @@ export interface ApiUser {
   updatedAt: string;
 }
 
+export interface AdminSession {
+  id: number;
+  userId: string;
+  userName: string;
+  userRole: string | null;
+  createdAt: string;
+  expiresAt: string;
+}
+
 export interface UserSummary {
   id: string;
   name: string;

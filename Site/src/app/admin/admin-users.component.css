@@ -1,21 +1,48 @@
 :host {
   display: block;
+  --admin-table-header-bg-light: rgba(15, 23, 42, 0.04);
+  --admin-table-header-bg-dark: rgba(148, 163, 184, 0.08);
+  --admin-table-header-text-light: #64748b;
+  --admin-table-header-text-dark: #94a3b8;
 }
 
-.admin-users-table .mat-mdc-header-cell,
-.admin-users-table .mat-mdc-cell {
+.admin-table .mat-mdc-header-cell,
+.admin-table .mat-mdc-cell {
   padding: 16px;
   border-bottom-color: transparent;
 }
 
-.admin-users-table .mat-mdc-header-cell {
-  background-color: transparent;
-}
-
-.admin-users-table .mat-mdc-row {
+.admin-table .mat-mdc-row {
   transition: background-color 0.2s ease;
 }
 
-.admin-users-table .mat-mdc-row:hover {
+.admin-table .mat-mdc-row:hover {
   background-color: rgba(15, 23, 42, 0.04);
+}
+
+:host-context(.dark) .admin-table .mat-mdc-row:hover {
+  background-color: rgba(148, 163, 184, 0.08);
+}
+
+.admin-table .mat-mdc-header-row {
+  background-color: var(--admin-table-header-bg-light);
+}
+
+:host-context(.dark) .admin-table .mat-mdc-header-row {
+  background-color: var(--admin-table-header-bg-dark);
+}
+
+.admin-table .mat-mdc-header-cell {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--admin-table-header-text-light);
+  padding: 16px;
+  height: 56px;
+  vertical-align: middle;
+}
+
+:host-context(.dark) .admin-table .mat-mdc-header-cell {
+  color: var(--admin-table-header-text-dark);
 }

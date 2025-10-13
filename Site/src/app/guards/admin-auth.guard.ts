@@ -7,20 +7,22 @@ export const adminAuthGuard: CanActivateFn = (_route, state) => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  return authService.ensureValidAccessToken().pipe(
+  const redirectTo = authService.resolveRedirectPath(state.url, '/admin');
+
+  return authService.ensureSession('admin').pipe(
     map((isValid) => {
       if (isValid && authService.isAdmin()) {
         return true;
       }
 
       return router.createUrlTree(['/admin/login'], {
-        queryParams: { redirectTo: state.url },
+        queryParams: { redirectTo },
       });
     }),
     catchError(() =>
       of(
         router.createUrlTree(['/admin/login'], {
-          queryParams: { redirectTo: state.url },
+          queryParams: { redirectTo },
         }),
       ),
     ),

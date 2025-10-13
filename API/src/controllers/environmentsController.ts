@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import type { Request, Response } from 'express';
 import { callStoredProcedure } from '../db/helpers';
 import { getEnvironmentById, getLatestEnvironmentForTab, listEnvironmentsForTab } from '../db/resourceAccess';
 import type {
@@ -7,19 +7,15 @@ import type {
 } from '../models/requestBodies';
 import { serializeEnvironment } from '../serializers';
 import { sanitizeTextInput } from '../utils/sanitizers';
-
-type SerializedEnvironment = ReturnType<typeof serializeEnvironment>;
-
-type TabEnvironmentsResponse = Response<SerializedEnvironment[] | { error: string }>;
-type TabEnvironmentRequest = Request<{ tabId: string }>;
-
-type CreateRequest = Request<Record<string, never>, unknown, Partial<CreateEnvironmentRequest>>;
-
-type EnvironmentParams = { environmentId: string };
-
-type UpdateRequest = Request<EnvironmentParams, unknown, Partial<UpdateEnvironmentRequest>>;
-
-type DeleteRequest = Request<EnvironmentParams>;
+import type {
+  CreateRequest,
+  DeleteRequest,
+  EnvironmentParams,
+  SerializedEnvironment,
+  TabEnvironmentRequest,
+  TabEnvironmentsResponse,
+  UpdateRequest,
+} from '../types/controllers/environments';
 
 function ensureTabContext(req: Request, res: Response) {
   const tab = req.tab;

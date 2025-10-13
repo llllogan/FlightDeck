@@ -1,19 +1,24 @@
 import { Request, Response } from 'express';
-import type { RowDataPacket } from 'mysql2/promise';
 import { initDatabase, getPool } from '../db/pool';
+import packageJson from '../../package.json';
 
-type HealthCheckRow = RowDataPacket & { result: number };
+const apiVersion = packageJson.version ?? 'unknown';
 
 async function healthCheck(_req: Request, res: Response): Promise<void> {
   try {
     await initDatabase();
     const pool = getPool();
-    const [rows] = await pool.query<HealthCheckRow[]>('SELECT 1 AS result');
-    const isConnected = rows.length > 0 && rows[0]?.result === 1;
-    res.json({ status: 'ok', database: isConnected ? 'connected' : 'unknown' });
+    const connection = await pool.getConnection();
+
+    try {
+      await connection.ping();
+      res.json({ status: 'ok', database: 'connected', version: apiVersion });
+    } finally {
+      connection.release();
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    res.status(500).json({ status: 'error', message });
+    res.status(500).json({ status: 'error', message, version: apiVersion });
   }
 }
 

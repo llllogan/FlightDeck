@@ -1,16 +1,26 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
 import { catchError, finalize, map, shareReplay, tap } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { TokenStorageService, StoredAuthUser } from './token-storage.service';
+import { AUTH_CONTEXT, AuthContext, SKIP_AUTH_REFRESH } from '../interceptors/auth.interceptor';
 
-interface AuthResponse {
-  accessToken: string;
-  refreshToken: string;
+interface AuthSessionResponse {
   user: StoredAuthUser;
+  accessTokenExpiresAt?: string;
+  refreshTokenExpiresAt?: string;
 }
+
+const REDIRECT_PATH_ALIASES: Record<string, string> = {
+  '/dashboard': '/dashboard',
+  '/dashboard/': '/dashboard',
+  '/dashbaord': '/dashboard',
+  '/dashbaord/': '/dashboard',
+  '/admin': '/admin',
+  '/admin/': '/admin',
+};
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -19,71 +29,92 @@ export class AuthService {
   private readonly router = inject(Router);
   private readonly baseUrl = `${environment.apiBaseUrl}/auth`;
 
-  private readonly accessToken$ = new BehaviorSubject<string | null>(this.storage.getAccessToken());
-  private readonly refreshToken$ = new BehaviorSubject<string | null>(this.storage.getRefreshToken());
-  private readonly authUser$ = new BehaviorSubject<StoredAuthUser | null>(this.storage.getUser());
+  private readonly userSubject = new BehaviorSubject<StoredAuthUser | null>(this.storage.getUser());
+  readonly user$ = this.userSubject.asObservable();
 
-  private refreshInFlight$: Observable<string> | null = null;
+  private readonly usernameAvailabilityCache = new Map<string, boolean>();
+  private refreshInFlight$: Observable<boolean> | null = null;
 
-  readonly user$ = this.authUser$.asObservable();
-
-  readonly isAuthenticated$ = this.accessToken$.pipe(map((token) => this.isTokenValid(token)));
+  get currentUser(): StoredAuthUser | null {
+    return this.userSubject.value;
+  }
 
   login(name: string, password: string): Observable<StoredAuthUser> {
+    const context = new HttpContext().set(SKIP_AUTH_REFRESH, true);
     return this.http
-      .post<AuthResponse>(`${this.baseUrl}/login`, {
-        name,
-        password,
-      })
+      .post<AuthSessionResponse>(`${this.baseUrl}/login`, { name, password }, { context })
       .pipe(
-        tap((response) => this.setSession(response)),
+        tap((response) => this.setSession(response.user)),
         map((response) => response.user),
       );
   }
 
-  logout(options: { redirectToLogin?: boolean } = { redirectToLogin: true }): Observable<void> {
-    const refreshToken = this.refreshToken$.value;
-    this.clearSession();
+  register(name: string, password: string): Observable<StoredAuthUser> {
+    const context = new HttpContext().set(SKIP_AUTH_REFRESH, true);
+    return this.http
+      .post<AuthSessionResponse>(`${this.baseUrl}/register`, { name, password }, { context })
+      .pipe(
+        tap((response) => this.setSession(response.user)),
+        map((response) => response.user),
+      );
+  }
 
-    if (!refreshToken) {
-      if (options.redirectToLogin !== false) {
-        void this.router.navigate(['/admin/login']);
-      }
-      return of(void 0);
+  checkUsernameAvailability(name: string): Observable<boolean> {
+    const trimmed = name.trim();
+
+    if (!trimmed) {
+      return of(false);
     }
 
+    const cacheKey = trimmed.toLowerCase();
+    if (this.usernameAvailabilityCache.has(cacheKey)) {
+      return of(this.usernameAvailabilityCache.get(cacheKey) ?? false);
+    }
+
+    const context = new HttpContext().set(SKIP_AUTH_REFRESH, true);
+    const params = new HttpParams().set('name', trimmed);
+
     return this.http
-      .post(`${this.baseUrl}/logout`, { refreshToken })
+      .get<{ available: boolean }>(`${this.baseUrl}/username-available`, { context, params })
       .pipe(
-        catchError(() => of(null)),
+        map((response) => response.available),
+        tap((available) => this.usernameAvailabilityCache.set(cacheKey, available)),
+        catchError(() => of(false)),
+      );
+  }
+
+  logout(options: { redirectTo?: string | false } = {}): Observable<void> {
+    const context = new HttpContext().set(SKIP_AUTH_REFRESH, true);
+    this.clearSession();
+
+    return this.http
+      .post<{ success: true }>(`${this.baseUrl}/logout`, {}, { context })
+      .pipe(
+        catchError(() => of({ success: false as const })),
         tap(() => {
-          if (options.redirectToLogin !== false) {
-            void this.router.navigate(['/admin/login']);
+          const redirectTo = options.redirectTo ?? '/admin/login';
+          if (redirectTo !== false) {
+            void this.router.navigate([redirectTo]);
           }
         }),
         map(() => void 0),
       );
   }
 
-  refreshTokens(): Observable<string> {
+  refreshSession(): Observable<boolean> {
     if (this.refreshInFlight$) {
       return this.refreshInFlight$;
     }
 
-    const refreshToken = this.refreshToken$.value;
-
-    if (!refreshToken) {
-      this.handleAuthFailure();
-      return throwError(() => new Error('No refresh token available'));
-    }
+    const context = new HttpContext().set(SKIP_AUTH_REFRESH, true);
 
     this.refreshInFlight$ = this.http
-      .post<AuthResponse>(`${this.baseUrl}/refresh`, { refreshToken })
+      .post<AuthSessionResponse>(`${this.baseUrl}/refresh`, {}, { context })
       .pipe(
-        tap((response) => this.setSession(response)),
-        map((response) => response.accessToken),
+        tap((response) => this.setSession(response.user)),
+        map(() => true),
         catchError((error) => {
-          this.handleAuthFailure();
+          this.handleAuthFailure(false);
           return throwError(() => error);
         }),
         finalize(() => {
@@ -95,95 +126,97 @@ export class AuthService {
     return this.refreshInFlight$;
   }
 
-  ensureValidAccessToken(): Observable<boolean> {
-    const token = this.accessToken$.value;
-    if (this.isTokenValid(token)) {
+  ensureSession(context: AuthContext = 'dashboard'): Observable<boolean> {
+    if (this.currentUser) {
       return of(true);
     }
 
-    const refreshToken = this.refreshToken$.value;
-    if (!refreshToken) {
-      this.handleAuthFailure(false);
-      return of(false);
-    }
+    const httpContext = new HttpContext().set(SKIP_AUTH_REFRESH, true).set(AUTH_CONTEXT, context);
 
-    return this.refreshTokens().pipe(
-      map(() => true),
-      catchError(() => {
-        this.handleAuthFailure(false);
-        return of(false);
-      }),
-    );
-  }
-
-  getAccessToken(): string | null {
-    const token = this.accessToken$.value;
-    if (!this.isTokenValid(token)) {
-      return null;
-    }
-    return token;
-  }
-
-  getRefreshToken(): string | null {
-    return this.refreshToken$.value;
-  }
-
-  getUser(): StoredAuthUser | null {
-    return this.authUser$.value;
+    return this.http
+      .get<AuthSessionResponse>(`${this.baseUrl}/session`, { context: httpContext })
+      .pipe(
+        tap((response) => this.setSession(response.user)),
+        map(() => true),
+        catchError(() => {
+          this.handleAuthFailure(false);
+          return of(false);
+        }),
+      );
   }
 
   isAdmin(): boolean {
-    const role = this.authUser$.value?.role;
+    const role = this.currentUser?.role;
     return role ? role.toLowerCase() === 'admin' : false;
   }
 
-  handleAuthFailure(redirectToLogin: boolean = true): void {
+  handleAuthFailure(redirect: boolean | string = true): void {
     this.clearSession();
-    if (redirectToLogin) {
-      void this.router.navigate(['/admin/login']);
+    if (redirect === false) {
+      return;
     }
+    const target = typeof redirect === 'string' ? redirect : '/admin/login';
+    void this.router.navigate([target]);
   }
 
-  private setSession(response: AuthResponse): void {
-    this.storage.setAccessToken(response.accessToken);
-    this.storage.setRefreshToken(response.refreshToken);
-    this.storage.setUser(response.user);
-    this.accessToken$.next(response.accessToken);
-    this.refreshToken$.next(response.refreshToken);
-    this.authUser$.next(response.user);
+  resolveRedirectPath(
+    target: string | null | undefined,
+    fallback: string,
+    allowed?: readonly string[],
+  ): string {
+    const normalized = this.normalizeRedirectTarget(target);
+    if (!normalized) {
+      return fallback;
+    }
+
+    const canonical = REDIRECT_PATH_ALIASES[normalized] ?? normalized;
+    const allowedTargets = allowed && allowed.length > 0 ? [...allowed] : [fallback];
+
+    return allowedTargets.includes(canonical) ? canonical : fallback;
+  }
+
+  private normalizeRedirectTarget(target: string | null | undefined): string | null {
+    if (typeof target !== 'string') {
+      return null;
+    }
+
+    let candidate = target.trim();
+    if (!candidate) {
+      return null;
+    }
+
+    const absoluteUrlPattern = /^[a-z][a-z0-9+.-]*:\/\//i;
+    if (absoluteUrlPattern.test(candidate)) {
+      try {
+        candidate = new URL(candidate).pathname;
+      } catch {
+        return null;
+      }
+    }
+
+    if (!candidate.startsWith('/')) {
+      candidate = `/${candidate}`;
+    }
+
+    const pathOnly = candidate.split(/[?#]/)[0] ?? candidate;
+    const collapsed = pathOnly.replace(/\/{2,}/g, '/');
+    const withoutTrailingSlash =
+      collapsed.length > 1 && collapsed.endsWith('/') ? collapsed.slice(0, -1) : collapsed;
+
+    if (!withoutTrailingSlash) {
+      return null;
+    }
+
+    return withoutTrailingSlash.toLowerCase();
+  }
+
+  private setSession(user: StoredAuthUser): void {
+    this.userSubject.next(user);
+    this.storage.setUser(user);
   }
 
   private clearSession(): void {
+    this.userSubject.next(null);
     this.storage.clearAll();
-    this.accessToken$.next(null);
-    this.refreshToken$.next(null);
-    this.authUser$.next(null);
-  }
-
-  private isTokenValid(token: string | null): boolean {
-    if (!token) {
-      return false;
-    }
-
-    const payload = this.decodeToken(token);
-    if (!payload?.exp) {
-      return false;
-    }
-
-    const expiry = payload.exp * 1000;
-    return Date.now() < expiry;
-  }
-
-  private decodeToken(token: string): { exp?: number } | null {
-    try {
-      const parts = token.split('.');
-      if (parts.length !== 3) {
-        return null;
-      }
-      const payload = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
-      return JSON.parse(payload);
-    } catch {
-      return null;
-    }
   }
 }

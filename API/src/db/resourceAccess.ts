@@ -1,5 +1,5 @@
 import type { RowDataPacket } from 'mysql2/promise';
-import { callStoredProcedure, queryAll, querySingle } from './helpers';
+import { callStoredProcedure, fetchAllFromProcedure, fetchSingleFromProcedure } from './helpers';
 
 export interface UserRecord extends RowDataPacket {
   id: string;
@@ -79,23 +79,23 @@ export interface TabSearchViewRow extends RowDataPacket {
 }
 
 export async function getUserById(userId: string): Promise<UserRecord | undefined> {
-  return querySingle<UserRecord>(
-    'SELECT id, name, role, createdAt, updatedAt FROM users WHERE id = ?',
-    [userId],
-  );
+  return fetchSingleFromProcedure<UserRecord>('get_user_by_id', [userId]);
 }
 
 export async function getUserWithPasswordByName(name: string): Promise<UserAuthRecord | undefined> {
-  return querySingle<UserAuthRecord>(
-    'SELECT id, name, role, passwordHash, createdAt, updatedAt FROM users WHERE name = ? LIMIT 1',
-    [name],
-  );
+  return fetchSingleFromProcedure<UserAuthRecord>('get_user_with_password_by_name', [name]);
+}
+
+export async function getUserWithPasswordById(userId: string): Promise<UserAuthRecord | undefined> {
+  return fetchSingleFromProcedure<UserAuthRecord>('get_user_with_password_by_id', [userId]);
+}
+
+export async function getUserByName(name: string): Promise<UserRecord | undefined> {
+  return fetchSingleFromProcedure<UserRecord>('get_user_by_name', [name]);
 }
 
 export async function listUsers(): Promise<UserRecord[]> {
-  return queryAll<UserRecord>(
-    'SELECT id, name, role, createdAt, updatedAt FROM users ORDER BY createdAt ASC',
-  );
+  return fetchAllFromProcedure<UserRecord>('list_users');
 }
 
 interface UpdateUserOptions {
@@ -125,67 +125,43 @@ export async function updateUser(
 }
 
 export async function getTabGroupById(tabGroupId: string): Promise<UserTabGroupViewRow | undefined> {
-  return querySingle<UserTabGroupViewRow>(
-    'SELECT * FROM user_tabgroups_view WHERE tabGroupId = ?',
-    [tabGroupId],
-  );
+  return fetchSingleFromProcedure<UserTabGroupViewRow>('get_tab_group_by_id', [tabGroupId]);
 }
 
 export async function getLatestTabGroupForUser(userId: string): Promise<UserTabGroupViewRow | undefined> {
-  return querySingle<UserTabGroupViewRow>(
-    'SELECT * FROM user_tabgroups_view WHERE userId = ? ORDER BY tabGroupCreatedAt DESC LIMIT 1',
-    [userId],
-  );
+  return fetchSingleFromProcedure<UserTabGroupViewRow>('get_latest_tab_group_for_user', [userId]);
 }
 
 export async function listTabGroupsForUser(userId: string): Promise<UserTabGroupViewRow[]> {
-  return queryAll<UserTabGroupViewRow>(
-    'SELECT * FROM user_tabgroups_view WHERE userId = ? ORDER BY tabGroupSortOrder ASC, tabGroupCreatedAt ASC',
-    [userId],
-  );
+  return fetchAllFromProcedure<UserTabGroupViewRow>('list_tab_groups_for_user', [userId]);
 }
 
 export async function getTabById(tabId: string): Promise<TabDetailViewRow | undefined> {
-  return querySingle<TabDetailViewRow>('SELECT * FROM tab_detail_view WHERE tabId = ?', [tabId]);
+  return fetchSingleFromProcedure<TabDetailViewRow>('get_tab_by_id', [tabId]);
 }
 
 export async function getLatestTabForGroup(tabGroupId: string): Promise<TabDetailViewRow | undefined> {
-  return querySingle<TabDetailViewRow>(
-    'SELECT * FROM tab_detail_view WHERE tabGroupId = ? ORDER BY tabCreatedAt DESC LIMIT 1',
-    [tabGroupId],
-  );
+  return fetchSingleFromProcedure<TabDetailViewRow>('get_latest_tab_for_group', [tabGroupId]);
 }
 
 export async function listTabsForTabGroup(tabGroupId: string): Promise<TabDetailViewRow[]> {
-  return queryAll<TabDetailViewRow>(
-    'SELECT * FROM tab_detail_view WHERE tabGroupId = ? ORDER BY tabSortOrder ASC, tabCreatedAt ASC',
-    [tabGroupId],
-  );
+  return fetchAllFromProcedure<TabDetailViewRow>('list_tabs_for_tab_group', [tabGroupId]);
 }
 
 export async function getEnvironmentById(environmentId: string): Promise<EnvironmentDetailViewRow | undefined> {
-  return querySingle<EnvironmentDetailViewRow>(
-    'SELECT * FROM environment_detail_view WHERE environmentId = ?',
-    [environmentId],
-  );
+  return fetchSingleFromProcedure<EnvironmentDetailViewRow>('get_environment_by_id', [environmentId]);
 }
 
 export async function getLatestEnvironmentForTab(tabId: string): Promise<EnvironmentDetailViewRow | undefined> {
-  return querySingle<EnvironmentDetailViewRow>(
-    'SELECT * FROM environment_detail_view WHERE tabId = ? ORDER BY environmentCreatedAt DESC LIMIT 1',
-    [tabId],
-  );
+  return fetchSingleFromProcedure<EnvironmentDetailViewRow>('get_latest_environment_for_tab', [tabId]);
 }
 
 export async function getTabGroupSummaryForUser(userId: string): Promise<TabGroupSummaryRow[]> {
-  return queryAll<TabGroupSummaryRow>(
-    'SELECT * FROM tabgroup_summary_view WHERE userId = ?',
-    [userId],
-  );
+  return fetchAllFromProcedure<TabGroupSummaryRow>('get_tab_group_summary_for_user', [userId]);
 }
 
 export async function listEnvironmentsForTab(tabId: string): Promise<EnvironmentDetailViewRow[]> {
-  return queryAll<EnvironmentDetailViewRow>('SELECT * FROM environment_detail_view WHERE tabId = ?', [tabId]);
+  return fetchAllFromProcedure<EnvironmentDetailViewRow>('list_environments_for_tab', [tabId]);
 }
 
 export async function searchTabsForUser(userId: string, query: string): Promise<TabSearchViewRow[]> {

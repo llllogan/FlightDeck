@@ -12,6 +12,7 @@ import {
   inject,
 } from '@angular/core';
 import { CommonModule, DOCUMENT } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin, Observable, Subject, of } from 'rxjs';
@@ -27,7 +28,7 @@ import {
   WorkspaceResponse,
   TabSearchResult,
 } from '../models';
-import { CurrentUserService } from '../services/current-user.service';
+import { AuthService } from '../services/auth.service';
 import { UsersApiService } from '../services/users-api.service';
 import { TabGroupsApiService } from '../services/tab-groups-api.service';
 import { TabsApiService } from '../services/tabs-api.service';
@@ -102,7 +103,7 @@ export class WorkspaceComponent implements OnInit, AfterViewInit {
 
   constructor(
     private readonly destroyRef: DestroyRef,
-    private readonly currentUser: CurrentUserService,
+    private readonly authService: AuthService,
     private readonly usersApi: UsersApiService,
     private readonly tabGroupsApi: TabGroupsApiService,
     private readonly tabsApi: TabsApiService,
@@ -115,17 +116,18 @@ export class WorkspaceComponent implements OnInit, AfterViewInit {
     this.initializeTheme();
     this.initializeSearchStream();
 
-    this.currentUser.userId$
+    this.authService.user$
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((userId) => {
+      .subscribe((user) => {
         this.runInZone(() => {
-          this.userId = userId ?? null;
+          const nextUserId = user?.id ?? null;
+          this.userId = nextUserId;
           this.userContextVersion += 1;
           this.emitSearchTerm(this.searchActiveTerm);
 
-          if (userId) {
+          if (nextUserId) {
             this.loadEnvironmentCodes();
-            this.loadWorkspace(userId);
+            this.loadWorkspace();
           } else {
             this.summary = null;
             this.sections = [];
@@ -136,11 +138,11 @@ export class WorkspaceComponent implements OnInit, AfterViewInit {
   }
 
   ngOnInit(): void {
-    this.currentUser
-      .initialize()
+    this.authService
+      .ensureSession()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        error: (err) => this.handleError('Failed to initialize user context.', err),
+        error: (err) => this.handleError('Failed to initialize user session.', err),
       });
   }
 
@@ -155,6 +157,15 @@ export class WorkspaceComponent implements OnInit, AfterViewInit {
     this.searchActiveTerm = '';
     this.searchActiveIndex = null;
     this.focusSearchInput();
+  }
+
+  logout(): void {
+    this.authService
+      .logout({ redirectTo: '/dashboard/login' })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        error: (error) => console.error('Failed to log out', error),
+      });
   }
 
   onSearchKeydown(event: KeyboardEvent): void {
@@ -336,7 +347,7 @@ export class WorkspaceComponent implements OnInit, AfterViewInit {
           this.searchLoading = true;
           this.searchError = null;
 
-          return this.tabSearchApi.search(this.userId, term).pipe(
+          return this.tabSearchApi.search(term).pipe(
             map((results) => ({ context, results })),
             catchError((err) => {
               console.error('Failed to search tabs', err);
@@ -663,20 +674,19 @@ export class WorkspaceComponent implements OnInit, AfterViewInit {
       this.syncEditingGroupTabs();
     }
 
-    this.tabGroupsApi
-      .moveTabGroup(this.userId, section.group.id, direction)
+    this.tabGroupsApi.moveTabGroup(section.group.id, direction)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
           if (this.userId) {
-            this.loadWorkspace(this.userId);
+            this.loadWorkspace();
           }
         },
         error: (err) => {
           console.error('Failed to reorder tab group.', err);
           this.error = 'Failed to reorder tab group.';
           if (this.userId) {
-            this.loadWorkspace(this.userId);
+            this.loadWorkspace();
           }
         },
       });
@@ -706,20 +716,19 @@ export class WorkspaceComponent implements OnInit, AfterViewInit {
     );
     this.syncEditingGroupTabs();
 
-    this.tabsApi
-      .moveTab(this.userId, currentTab.tab.id, direction)
+    this.tabsApi.moveTab(currentTab.tab.id, direction)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
           if (this.userId) {
-            this.loadWorkspace(this.userId);
+            this.loadWorkspace();
           }
         },
         error: (err) => {
           console.error('Failed to reorder tab.', err);
           this.error = 'Failed to reorder tab.';
           if (this.userId) {
-            this.loadWorkspace(this.userId);
+            this.loadWorkspace();
           }
         },
       });
@@ -812,14 +821,13 @@ export class WorkspaceComponent implements OnInit, AfterViewInit {
 
     this.error = null;
 
-    this.tabGroupsApi
-      .createTabGroup(this.userId, { title })
+    this.tabGroupsApi.createTabGroup({ title })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () =>
           this.runInZone(() => {
             this.closeAddGroupModal();
-            this.loadWorkspace(this.userId!);
+            this.loadWorkspace();
           }),
         error: (err) => this.handleError('Failed to create tab group.', err),
       });
@@ -879,14 +887,13 @@ export class WorkspaceComponent implements OnInit, AfterViewInit {
 
     this.error = null;
 
-    this.tabGroupsApi
-      .renameTabGroup(this.userId, section.group.id, { title: newTitle })
+    this.tabGroupsApi.renameTabGroup(section.group.id, { title: newTitle })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () =>
           this.runInZone(() => {
             this.closeEditGroupModal();
-            this.loadWorkspace(this.userId!);
+            this.loadWorkspace();
           }),
         error: (err) => this.handleError('Failed to rename tab group.', err),
       });
@@ -905,14 +912,13 @@ export class WorkspaceComponent implements OnInit, AfterViewInit {
 
     this.error = null;
 
-    this.tabGroupsApi
-      .deleteTabGroup(this.userId, section.group.id)
+    this.tabGroupsApi.deleteTabGroup(section.group.id)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () =>
           this.runInZone(() => {
             this.closeEditGroupModal();
-            this.loadWorkspace(this.userId!);
+            this.loadWorkspace();
           }),
         error: (err) => this.handleError('Failed to delete tab group.', err),
       });
@@ -925,8 +931,7 @@ export class WorkspaceComponent implements OnInit, AfterViewInit {
 
     this.error = null;
 
-    this.tabsApi
-      .deleteTab(this.userId, tabId)
+    this.tabsApi.deleteTab(tabId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () =>
@@ -939,7 +944,7 @@ export class WorkspaceComponent implements OnInit, AfterViewInit {
             }));
             this.syncEditingGroupTabs();
             this.faviconErrorTabIds.delete(tabId);
-            this.loadWorkspace(this.userId!);
+            this.loadWorkspace();
           }),
         error: (err) => this.handleError('Failed to delete tab.', err),
       });
@@ -1022,14 +1027,13 @@ export class WorkspaceComponent implements OnInit, AfterViewInit {
 
     this.error = null;
 
-    this.tabsApi
-      .createTab(this.userId, payload)
+    this.tabsApi.createTab(payload)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () =>
           this.runInZone(() => {
             this.closeAddTabModal();
-            this.loadWorkspace(this.userId!);
+            this.loadWorkspace();
           }),
         error: (err) => this.handleError('Failed to create tab.', err),
       });
@@ -1128,7 +1132,7 @@ export class WorkspaceComponent implements OnInit, AfterViewInit {
     // If no environments remain, delete the tab entirely instead of leaving an empty shell.
 
     if (!shouldDeleteTab && newTitle && newTitle !== tabView.tab.title) {
-      operations.push(this.tabsApi.renameTab(this.userId, tabId, { title: newTitle }));
+      operations.push(this.tabsApi.renameTab(tabId, { title: newTitle }));
     }
 
     let hasValidationError = false;
@@ -1164,7 +1168,7 @@ export class WorkspaceComponent implements OnInit, AfterViewInit {
           const original = this.originalEnvironmentMap.get(id);
           if (!original || original.name !== nameValue || original.url !== normalizedUrl) {
             operations.push(
-              this.environmentsApi.update(this.userId!, id, {
+              this.environmentsApi.update(id, {
                 name: nameValue,
                 url: normalizedUrl,
               }),
@@ -1172,7 +1176,7 @@ export class WorkspaceComponent implements OnInit, AfterViewInit {
           }
         } else {
           operations.push(
-            this.environmentsApi.create(this.userId!, {
+            this.environmentsApi.create({
               tabId,
               name: nameValue,
               url: normalizedUrl,
@@ -1188,10 +1192,10 @@ export class WorkspaceComponent implements OnInit, AfterViewInit {
     }
 
     if (shouldDeleteTab) {
-      operations.push(this.tabsApi.deleteTab(this.userId!, tabId));
+      operations.push(this.tabsApi.deleteTab(tabId));
     } else {
       this.removedEnvironmentIds.forEach((envId) => {
-        operations.push(this.environmentsApi.delete(this.userId!, envId));
+        operations.push(this.environmentsApi.delete(envId));
       });
     }
 
@@ -1206,7 +1210,7 @@ export class WorkspaceComponent implements OnInit, AfterViewInit {
           this.runInZone(() => {
             this.closeEditTabModal();
             if (this.userId) {
-              this.loadWorkspace(this.userId);
+              this.loadWorkspace();
             }
           }),
         error: (err) => this.handleError('Failed to update tab.', err),
@@ -1229,15 +1233,14 @@ export class WorkspaceComponent implements OnInit, AfterViewInit {
     const tabId = tabView.tab.id;
     this.error = null;
 
-    this.tabsApi
-      .deleteTab(this.userId, tabId)
+    this.tabsApi.deleteTab(tabId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () =>
           this.runInZone(() => {
             this.closeEditTabModal();
             if (this.userId) {
-              this.loadWorkspace(this.userId);
+              this.loadWorkspace();
             }
           }),
         error: (err) => this.handleError('Failed to delete tab.', err),
@@ -1271,13 +1274,20 @@ export class WorkspaceComponent implements OnInit, AfterViewInit {
       });
   }
 
-  private loadWorkspace(userId: string): void {
+  private loadWorkspace(): void {
+    if (!this.userId) {
+      this.loading = false;
+      this.summary = null;
+      this.sections = [];
+      return;
+    }
+
     this.loading = true;
     this.error = null;
     this.sections = [];
 
     this.usersApi
-      .getWorkspace(userId)
+      .getWorkspace()
       .pipe(
         catchError((err) => {
           this.handleError('Failed to load workspace.', err);
@@ -1387,6 +1397,12 @@ export class WorkspaceComponent implements OnInit, AfterViewInit {
 
   private handleError(message: string, err: unknown): void {
     console.error(message, err);
+
+    if (err instanceof HttpErrorResponse && (err.status === 401 || err.status === 403)) {
+      this.authService.handleAuthFailure('/dashboard/login');
+      return;
+    }
+
     this.runInZone(() => {
       this.error = message;
       this.loading = false;

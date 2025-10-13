@@ -1,4 +1,8 @@
-import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
+import {
+  HttpContextToken,
+  HttpErrorResponse,
+  HttpInterceptorFn,
+} from '@angular/common/http';
 import { inject } from '@angular/core';
 import { environment } from '../../environments/environment';
 import { AuthService } from '../services/auth.service';
@@ -8,65 +12,53 @@ function isApiUrl(url: string): boolean {
   return url.startsWith(environment.apiBaseUrl);
 }
 
-function shouldAttachToken(url: string): boolean {
-  if (!isApiUrl(url)) {
-    return false;
-  }
-  return !url.includes('/auth/');
-}
+export type AuthContext = 'admin' | 'dashboard';
+
+export const SKIP_AUTH_REFRESH = new HttpContextToken<boolean>(() => false);
+export const AUTH_CONTEXT = new HttpContextToken<AuthContext>(() => 'dashboard');
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
-  let modifiedRequest = req;
+  const requestWithCredentials = req.clone({ withCredentials: true });
+  const skipRefresh = requestWithCredentials.context.get(SKIP_AUTH_REFRESH);
+  const requestContext = requestWithCredentials.context.get(AUTH_CONTEXT);
 
-  if (shouldAttachToken(req.url)) {
-    const token = authService.getAccessToken();
-    if (token) {
-      modifiedRequest = req.clone({
-        setHeaders: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-    }
-  }
+  const url = requestWithCredentials.url;
+  const isAdminRequest = url.includes('/api/admin/') || url.includes('/api/debug/');
+  const context: AuthContext = requestContext ?? (isAdminRequest ? 'admin' : 'dashboard');
 
-  return next(modifiedRequest).pipe(
+  const isLoginRequest = url.includes('/api/auth/login');
+  const isRefreshRequest = url.includes('/api/auth/refresh');
+
+  return next(requestWithCredentials).pipe(
     catchError((error) => {
-      if (
-        shouldAttachToken(req.url) &&
-        error instanceof HttpErrorResponse &&
-        error.status === 401
-      ) {
-        return authService.refreshTokens().pipe(
-          switchMap((newToken) => {
-            if (!newToken) {
-              authService.handleAuthFailure();
-              return throwError(() => error);
-            }
-            const retried = req.clone({
-              setHeaders: {
-                Authorization: `Bearer ${newToken}`,
-              },
-            });
+      if (!(error instanceof HttpErrorResponse)) {
+        return throwError(() => error);
+      }
+
+      const shouldAttemptRefresh =
+        !skipRefresh &&
+        !isLoginRequest &&
+        !isRefreshRequest &&
+        error.status === 401 &&
+        isApiUrl(url);
+
+      if (shouldAttemptRefresh) {
+        return authService.refreshSession().pipe(
+          switchMap(() => {
+            const retryContext = requestWithCredentials.context.set(SKIP_AUTH_REFRESH, true);
+            const retried = requestWithCredentials.clone({ context: retryContext });
             return next(retried);
           }),
           catchError((refreshError) => {
-            authService.handleAuthFailure();
+            authService.handleAuthFailure(context === 'admin' ? '/admin/login' : '/dashboard/login');
             return throwError(() => refreshError);
           }),
         );
       }
 
-      if (error instanceof HttpErrorResponse && error.status === 401) {
-        const rawMessage =
-          typeof error.error === 'string'
-            ? error.error
-            : typeof error.error === 'object' && error.error
-              ? String(error.error.error ?? '')
-              : '';
-        if (rawMessage.toLowerCase().includes('invalid signature')) {
-          authService.handleAuthFailure();
-        }
+      if (!isLoginRequest && (error.status === 401 || error.status === 403)) {
+        authService.handleAuthFailure(context === 'admin' ? '/admin/login' : '/dashboard/login');
       }
 
       return throwError(() => error);

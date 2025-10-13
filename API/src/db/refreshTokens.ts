@@ -1,5 +1,5 @@
 import type { RowDataPacket } from 'mysql2/promise';
-import { getPool } from './pool';
+import { callStoredProcedure, fetchAllFromProcedure, fetchSingleFromProcedure } from './helpers';
 
 export interface RefreshTokenRow extends RowDataPacket {
   id: number;
@@ -9,19 +9,13 @@ export interface RefreshTokenRow extends RowDataPacket {
   createdAt: Date;
 }
 
+export interface RefreshTokenWithUserRow extends RefreshTokenRow {
+  userName: string;
+  userRole: string | null;
+}
+
 export async function ensureRefreshTokenTable(): Promise<void> {
-  const pool = getPool();
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS user_refresh_tokens (
-      id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-      userId CHAR(36) NOT NULL,
-      tokenHash CHAR(64) NOT NULL,
-      expiresAt DATETIME NOT NULL,
-      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      INDEX idx_user_refresh_tokens_userId (userId),
-      UNIQUE INDEX idx_user_refresh_tokens_tokenHash (tokenHash)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-  `);
+  await callStoredProcedure('ensure_refresh_token_table');
 }
 
 export async function saveRefreshToken(
@@ -29,29 +23,25 @@ export async function saveRefreshToken(
   tokenHash: string,
   expiresAt: Date,
 ): Promise<void> {
-  const pool = getPool();
-  await pool.query(
-    'INSERT INTO user_refresh_tokens (userId, tokenHash, expiresAt) VALUES (?, ?, ?)',
-    [userId, tokenHash, expiresAt],
-  );
+  await callStoredProcedure('save_refresh_token', [userId, tokenHash, expiresAt]);
 }
 
 export async function findRefreshToken(tokenHash: string): Promise<RefreshTokenRow | undefined> {
-  const pool = getPool();
-  const [rows] = await pool.query<RefreshTokenRow[]>(
-    'SELECT * FROM user_refresh_tokens WHERE tokenHash = ? LIMIT 1',
-    [tokenHash],
-  );
-
-  return rows[0];
+  return fetchSingleFromProcedure<RefreshTokenRow>('find_refresh_token', [tokenHash]);
 }
 
 export async function deleteRefreshToken(tokenHash: string): Promise<void> {
-  const pool = getPool();
-  await pool.query('DELETE FROM user_refresh_tokens WHERE tokenHash = ?', [tokenHash]);
+  await callStoredProcedure('delete_refresh_token', [tokenHash]);
 }
 
 export async function deleteRefreshTokensForUser(userId: string): Promise<void> {
-  const pool = getPool();
-  await pool.query('DELETE FROM user_refresh_tokens WHERE userId = ?', [userId]);
+  await callStoredProcedure('delete_refresh_tokens_for_user', [userId]);
+}
+
+export async function deleteRefreshTokenById(id: number): Promise<void> {
+  await callStoredProcedure('delete_refresh_token_by_id', [id]);
+}
+
+export async function listRefreshTokens(): Promise<RefreshTokenWithUserRow[]> {
+  return fetchAllFromProcedure<RefreshTokenWithUserRow>('list_refresh_tokens');
 }

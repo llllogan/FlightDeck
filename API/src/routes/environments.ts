@@ -5,12 +5,12 @@ import {
   deleteEnvironment,
   listEnvironmentsForTabHandler,
 } from '../controllers/environmentsController';
-import { requireUserId } from '../middleware/userContext';
+import { requireAuth } from '../middleware/auth';
 import { requireEnvironmentAccess, requireTabAccess } from '../middleware/resourceAccess';
 
 const router = Router();
 
-router.use(requireUserId);
+router.use(requireAuth());
 router.get('/tabs/:tabId', requireTabAccess(), listEnvironmentsForTabHandler);
 router.post(
   '/',
