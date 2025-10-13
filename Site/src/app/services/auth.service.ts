@@ -1,11 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import {
-  HttpClient,
-  HttpContext,
-  HttpHeaders,
-  HttpParams,
-  HttpResponse,
-} from '@angular/common/http';
+import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
 import { catchError, finalize, map, shareReplay, tap } from 'rxjs/operators';
@@ -17,15 +11,6 @@ interface AuthSessionResponse {
   user: StoredAuthUser;
   accessTokenExpiresAt?: string;
   refreshTokenExpiresAt?: string;
-}
-
-interface LegacyUserResponse {
-  user: LegacyUser;
-}
-
-export interface LegacyUser {
-  id: string;
-  name: string;
 }
 
 const REDIRECT_PATH_ALIASES: Record<string, string> = {
@@ -47,13 +32,7 @@ export class AuthService {
   private readonly userSubject = new BehaviorSubject<StoredAuthUser | null>(this.storage.getUser());
   readonly user$ = this.userSubject.asObservable();
 
-  private readonly legacyUserSubject = new BehaviorSubject<LegacyUser | null>(null);
-  readonly legacyUser$ = this.legacyUserSubject.asObservable();
-
-  private legacyUserChecked = false;
-  private legacyUserHeader: string | null = null;
   private readonly usernameAvailabilityCache = new Map<string, boolean>();
-
   private refreshInFlight$: Observable<boolean> | null = null;
 
   get currentUser(): StoredAuthUser | null {
@@ -102,115 +81,6 @@ export class AuthService {
         tap((available) => this.usernameAvailabilityCache.set(cacheKey, available)),
         catchError(() => of(false)),
       );
-  }
-
-  checkLegacyUser(options: { force?: boolean; legacyUserId?: string | null } = {}): Observable<LegacyUser | null> {
-    const { force = false } = options;
-    const incomingId = this.normalizeLegacyUserId(options.legacyUserId);
-
-    if (incomingId !== undefined) {
-      this.setLegacyUserId(incomingId);
-    }
-
-    if (this.currentUser) {
-      this.clearLegacyUserContext();
-      return of(null);
-    }
-
-    const headerValue = this.legacyUserHeader;
-
-    if (!headerValue) {
-      if (!this.legacyUserChecked || force) {
-        this.clearLegacyUserState();
-        this.legacyUserChecked = true;
-      }
-      return of(null);
-    }
-
-    if (!force && this.legacyUserChecked) {
-      return of(this.legacyUserSubject.value);
-    }
-
-    const context = new HttpContext().set(SKIP_AUTH_REFRESH, true);
-    const headers = new HttpHeaders().set('x-user-id', headerValue);
-
-    return this.http
-      .get<LegacyUserResponse>(`${this.baseUrl}/legacy-user`, {
-        context,
-        observe: 'response',
-        headers,
-      })
-      .pipe(
-        map((response: HttpResponse<LegacyUserResponse>) => {
-          const user = response.body?.user ?? null;
-
-          if (user) {
-            this.legacyUserSubject.next(user);
-            this.legacyUserChecked = true;
-            return user;
-          }
-
-          this.clearLegacyUserContext();
-          return null;
-        }),
-        catchError(() => {
-          this.clearLegacyUserState();
-          this.legacyUserChecked = false;
-          return of(null);
-        }),
-      );
-  }
-
-  getLegacyUser(options: { force?: boolean } = {}): Observable<LegacyUser | null> {
-    return this.checkLegacyUser(options);
-  }
-
-  getLegacyUserSnapshot(): LegacyUser | null {
-    return this.legacyUserSubject.value;
-  }
-
-  getLegacyUserHeader(): string | null {
-    return this.legacyUserHeader;
-  }
-
-  resetLegacyPassword(password: string, confirmPassword: string): Observable<StoredAuthUser> {
-    const headerValue = this.legacyUserHeader;
-
-    if (!headerValue) {
-      return throwError(() => new Error('Missing legacy user context.'));
-    }
-
-    const context = new HttpContext().set(SKIP_AUTH_REFRESH, true);
-    const headers = new HttpHeaders().set('x-user-id', headerValue);
-
-    return this.http
-      .post<AuthSessionResponse>(
-        `${this.baseUrl}/legacy-password-reset`,
-        { password, confirmPassword },
-        { context, headers },
-      )
-      .pipe(
-        tap((response) => {
-          this.setSession(response.user);
-        }),
-        map((response) => response.user),
-      );
-  }
-
-  setLegacyUserId(value: string | null): void {
-    const normalized = this.normalizeLegacyUserId(value) ?? null;
-
-    if (normalized === this.legacyUserHeader) {
-      return;
-    }
-
-    this.legacyUserHeader = normalized;
-    this.legacyUserChecked = false;
-
-    if (!normalized) {
-      this.clearLegacyUserState();
-      this.legacyUserChecked = false;
-    }
   }
 
   logout(options: { redirectTo?: string | false } = {}): Observable<void> {
@@ -343,35 +213,10 @@ export class AuthService {
   private setSession(user: StoredAuthUser): void {
     this.userSubject.next(user);
     this.storage.setUser(user);
-    this.clearLegacyUserContext();
   }
 
   private clearSession(): void {
     this.userSubject.next(null);
     this.storage.clearAll();
-    this.clearLegacyUserContext();
-  }
-
-  private clearLegacyUserContext(): void {
-    this.clearLegacyUserState();
-    this.legacyUserHeader = null;
-    this.legacyUserChecked = true;
-  }
-
-  private clearLegacyUserState(): void {
-    this.legacyUserSubject.next(null);
-  }
-
-  private normalizeLegacyUserId(value: string | null | undefined): string | null | undefined {
-    if (value === undefined) {
-      return undefined;
-    }
-
-    if (value === null) {
-      return null;
-    }
-
-    const trimmed = value.trim();
-    return trimmed ? trimmed : null;
   }
 }

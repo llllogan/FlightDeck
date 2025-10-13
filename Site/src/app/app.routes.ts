@@ -41,11 +41,7 @@ export const routes: Routes = [
   {
     path: '',
     pathMatch: 'full',
-    loadComponent: () => import('./auth/legacy-redirect.component').then((m) => m.LegacyRedirectComponent),
-  },
-  {
-    path: 'password-reset',
-    loadComponent: () => import('./auth/password-reset.component').then((m) => m.PasswordResetComponent),
+    redirectTo: 'dashboard/login',
   },
   {
     path: 'dashboard',
