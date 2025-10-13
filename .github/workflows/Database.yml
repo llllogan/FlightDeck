@@ -6,6 +6,8 @@ on:
 jobs:
   migrate-and-seed:
     runs-on: self-hosted
+    environment:
+      name: production
     env:
       DATABASE_URL: mysql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@${{ secrets.DB_HOST }}:${{ secrets.DB_PORT }}/${{ secrets.DB_NAME }}
     defaults:
