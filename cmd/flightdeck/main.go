@@ -132,8 +132,8 @@ func (a *app) signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	in.Name, in.Email = clean(in.Name, 100), strings.ToLower(clean(in.Email, 254))
-	if in.Name == "" || !strings.Contains(in.Email, "@") || len(in.Password) < 10 {
-		errorResponse(w, 400, "Name, a valid email, and a password of at least 10 characters are required.")
+	if in.Name == "" || !strings.Contains(in.Email, "@") || len(in.Password) < 6 {
+		errorResponse(w, 400, "Name, a valid email, and a password of at least 6 characters are required.")
 		return
 	}
 	hash, err := hashPassword(in.Password)
