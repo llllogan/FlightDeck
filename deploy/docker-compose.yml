@@ -1,6 +1,7 @@
 services:
   flightdeck:
     image: ${APP_IMAGE}
+    container_name: flightdeck
     restart: unless-stopped
     ports:
       - "${HOST_PORT:-8082}:8080"

@@ -31,6 +31,7 @@ This creates `new/flightdeck.db`.
 
 FlightDeck caches page URLs and their discovered favicon URLs in the local database. It does not store image bytes; the browser handles normal favicon image caching.
 
+
 ## CCM deployment
 
 The GitHub workflow builds a SHA-tagged GHCR image and submits `deploy/docker-compose.yml` to CCM. Configure a GitHub environment named `flightdeck` with the `JWT_SECRET` secret and a `CCM_URL` variable. Its CCM stack ID is `flightdeck`; add a matching target and stack entry to CCM:
