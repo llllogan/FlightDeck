@@ -1,0 +1,4 @@
+.env
+flightdeck.db
+flightdeck.db-*
+data/

@@ -1,0 +1,59 @@
+name: Deploy FlightDeck
+
+on:
+  push:
+    branches: master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: deploy-flightdeck
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ format('ghcr.io/{0}/flightdeck:{1}', github.repository_owner, github.sha) }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Validate deployment files
+        run: |
+          jq -e 'type == "object"' deploy/env.json >/dev/null
+          APP_IMAGE=flightdeck:test JWT_SECRET=test docker compose -f deploy/docker-compose.yml config >/dev/null
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+      - name: Build and push image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: deploy/Dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/flightdeck:${{ github.sha }}
+
+  deploy:
+    needs: build
+    runs-on: [self-hosted, linux]
+    environment: flightdeck
+    steps:
+      - uses: actions/checkout@v6
+      - name: Deploy
+        uses: ./.github/actions/ccm-deploy
+        with:
+          ccm_url: ${{ vars.CCM_URL }}
+          ccm_stack: flightdeck
+          repo: ${{ github.repository }}
+          sha: ${{ github.sha }}
+          compose_path: deploy/docker-compose.yml
+          env_json_path: deploy/env.json
+          stack_env_json: |
+            {"APP_IMAGE": ${{ toJSON(needs.build.outputs.image) }}, "JWT_SECRET": ${{ toJSON(secrets.JWT_SECRET) }}}

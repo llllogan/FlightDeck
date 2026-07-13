@@ -1,0 +1,29 @@
+name: CCM Deploy
+description: Deploy a docker-compose stack through CCM.
+inputs:
+  ccm_url: { required: true, description: Base CCM URL }
+  ccm_stack: { required: true, description: CCM stack ID }
+  repo: { required: false, default: "", description: Source repository }
+  sha: { required: false, default: "", description: Source revision }
+  compose_path: { required: true, description: Compose file path }
+  env_json_path: { required: false, default: "", description: Non-secret env.json path }
+  stack_env_json: { required: false, default: "{}", description: Explicit environment overrides }
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        CCM_URL: ${{ inputs.ccm_url }}
+        CCM_STACK: ${{ inputs.ccm_stack }}
+        REPO: ${{ inputs.repo }}
+        SHA: ${{ inputs.sha }}
+        COMPOSE_PATH: ${{ inputs.compose_path }}
+        ENV_JSON_PATH: ${{ inputs.env_json_path }}
+        STACK_ENV_JSON: ${{ inputs.stack_env_json }}
+      run: |
+        set -euo pipefail
+        file_env='{}'
+        if [ -n "$ENV_JSON_PATH" ]; then file_env="$(jq -ce 'if type == "object" then . else error("env.json must be an object") end' "$ENV_JSON_PATH")"; fi
+        stack_env="$(printf '%s' "$STACK_ENV_JSON" | jq -ce 'if type == "object" then with_entries(.value |= tostring) else error("stack_env_json must be an object") end')"
+        jq -cn --arg ccm_stack "$CCM_STACK" --arg repo "$REPO" --arg sha "$SHA" --rawfile compose_yml "$COMPOSE_PATH" --argjson env "$(jq -cn --argjson a "$file_env" --argjson b "$stack_env" '$a + $b')" '{ccm_stack:$ccm_stack,repo:$repo,sha:$sha,compose_yml:$compose_yml,env:$env}' > /tmp/ccm-payload.json
+        curl --fail-with-body -sS -X POST "${CCM_URL%/}/v1/deploy" -H 'Content-Type: application/json' --data @/tmp/ccm-payload.json

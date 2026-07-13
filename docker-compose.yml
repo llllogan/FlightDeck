@@ -1,0 +1,17 @@
+services:
+  flightdeck:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+    image: flightdeck:local
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: file:/data/flightdeck.db
+      JWT_SECRET: ${JWT_SECRET:-local-development-secret-change-before-deploying}
+      COOKIE_SECURE: "false"
+    volumes:
+      - flightdeck-data:/data
+
+volumes:
+  flightdeck-data:
