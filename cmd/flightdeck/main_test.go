@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"path/filepath"
 	"testing"
+	"time"
 
 	_ "github.com/tursodatabase/libsql-client-go/libsql"
 	_ "modernc.org/sqlite"
@@ -22,7 +23,7 @@ func TestMoveTabChangesSortOrder(t *testing.T) {
 	if err := migrate(db); err != nil {
 		t.Fatal(err)
 	}
-	_, err = db.Exec(`INSERT INTO users (id,name,email,password_hash) VALUES ('user','User','user@example.test','hash');
+	_, err = db.Exec(`INSERT INTO users (id,name,email,login_name,password_hash) VALUES ('user','User','user@example.test','user','hash');
 		INSERT INTO tab_groups (id,user_id,title,sort_order) VALUES ('group','user','Group',0);
 		INSERT INTO tabs (id,group_id,title,sort_order) VALUES ('first','group','First',0),('second','group','Second',1)`)
 	if err != nil {
@@ -60,7 +61,7 @@ func TestUpdateGroupUsesCurrentUserOwnership(t *testing.T) {
 	if err := migrate(db); err != nil {
 		t.Fatal(err)
 	}
-	_, err = db.Exec(`INSERT INTO users (id,name,email,password_hash) VALUES ('user','User','user@example.test','hash');
+	_, err = db.Exec(`INSERT INTO users (id,name,email,login_name,password_hash) VALUES ('user','User','user@example.test','user','hash');
 		INSERT INTO tab_groups (id,user_id,title,sort_order) VALUES ('group','user','Original',0)`)
 	if err != nil {
 		t.Fatal(err)
@@ -80,5 +81,34 @@ func TestUpdateGroupUsesCurrentUserOwnership(t *testing.T) {
 	}
 	if title != "Renamed" {
 		t.Fatalf("title = %q, want Renamed", title)
+	}
+}
+
+func TestLoginAcceptsMigratedUsername(t *testing.T) {
+	db, err := sql.Open("libsql", "file:"+filepath.Join(t.TempDir(), "flightdeck.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	db.SetMaxOpenConns(1)
+	if err := migrate(db); err != nil {
+		t.Fatal(err)
+	}
+	hash, err := hashPassword("a-long-password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO users (id,name,email,login_name,password_hash) VALUES ('old-user','Logan','old-user@migrated.flightdeck.invalid','Logan',?)`, hash); err != nil {
+		t.Fatal(err)
+	}
+	a := &app{db: db, jwtSecret: []byte("test-secret"), accessTTL: time.Minute, refreshTTL: time.Hour}
+	request := httptest.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewBufferString(`{"identifier":"logan","password":"a-long-password"}`))
+	response := httptest.NewRecorder()
+	a.login(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
+	}
+	if len(response.Result().Cookies()) != 2 {
+		t.Fatalf("cookies = %d, want access and refresh cookies", len(response.Result().Cookies()))
 	}
 }

@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/llllogan/flightdeck/internal/schema"
 	_ "github.com/tursodatabase/libsql-client-go/libsql"
 	"golang.org/x/crypto/bcrypt"
 	_ "modernc.org/sqlite" // Provides the local SQLite engine used by libSQL for file: URLs.
@@ -141,10 +142,10 @@ func (a *app) signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	u := user{ID: newID(), Name: in.Name, Email: in.Email}
-	_, err = a.db.Exec("INSERT INTO users (id,name,email,password_hash) VALUES (?,?,?,?)", u.ID, u.Name, u.Email, hash)
+	_, err = a.db.Exec("INSERT INTO users (id,name,email,login_name,password_hash) VALUES (?,?,?,?,?)", u.ID, u.Name, u.Email, u.Name, hash)
 	if err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "unique") {
-			errorResponse(w, 409, "That email is already registered.")
+			errorResponse(w, 409, "That email or username is already registered.")
 		} else {
 			errorResponse(w, 500, "Could not create account.")
 		}
@@ -154,16 +155,19 @@ func (a *app) signup(w http.ResponseWriter, r *http.Request) {
 	jsonResponse(w, 201, map[string]user{"user": u})
 }
 func (a *app) login(w http.ResponseWriter, r *http.Request) {
-	var in struct{ Email, Password string }
+	var in struct{ Identifier, Email, Password string }
 	if !decode(w, r, &in) {
 		return
 	}
-	in.Email = strings.ToLower(clean(in.Email, 254))
+	in.Identifier = strings.ToLower(clean(in.Identifier, 254))
+	if in.Identifier == "" { // Accept requests made by the previous email-only UI.
+		in.Identifier = strings.ToLower(clean(in.Email, 254))
+	}
 	var u user
 	var hash string
-	err := a.db.QueryRow("SELECT id,name,email,password_hash FROM users WHERE email = ?", in.Email).Scan(&u.ID, &u.Name, &u.Email, &hash)
+	err := a.db.QueryRow("SELECT id,name,email,password_hash FROM users WHERE email = ? COLLATE NOCASE OR login_name = ? COLLATE NOCASE LIMIT 1", in.Identifier, in.Identifier).Scan(&u.ID, &u.Name, &u.Email, &hash)
 	if err != nil || !checkPassword(hash, in.Password) {
-		errorResponse(w, 401, "Email or password is incorrect.")
+		errorResponse(w, 401, "Username, email, or password is incorrect.")
 		return
 	}
 	a.startSession(w, u)
@@ -611,46 +615,7 @@ func (a *app) tabOwned(id, userID string) bool {
 	return n == 1
 }
 func migrate(db *sql.DB) error {
-	stmts := []string{`PRAGMA foreign_keys = ON`, `CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY,name TEXT NOT NULL,email TEXT NOT NULL UNIQUE,password_hash TEXT NOT NULL,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`, `CREATE TABLE IF NOT EXISTS refresh_tokens (id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,token_hash TEXT NOT NULL UNIQUE,expires_at TEXT NOT NULL,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`, `CREATE TABLE IF NOT EXISTS tab_groups (id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,title TEXT NOT NULL,sort_order INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`, `CREATE TABLE IF NOT EXISTS tabs (id TEXT PRIMARY KEY,group_id TEXT NOT NULL REFERENCES tab_groups(id) ON DELETE CASCADE,title TEXT NOT NULL,sort_order INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`, `CREATE TABLE IF NOT EXISTS environments (id TEXT PRIMARY KEY,tab_id TEXT NOT NULL REFERENCES tabs(id) ON DELETE CASCADE,name TEXT NOT NULL,url TEXT NOT NULL,sort_order INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`, `CREATE TABLE IF NOT EXISTS favicon_sources (page_url TEXT PRIMARY KEY,favicon_url TEXT NOT NULL,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`, `CREATE INDEX IF NOT EXISTS idx_groups_user ON tab_groups(user_id,sort_order)`, `CREATE INDEX IF NOT EXISTS idx_tabs_group ON tabs(group_id,sort_order)`, `CREATE INDEX IF NOT EXISTS idx_environments_tab ON environments(tab_id,sort_order)`}
-	for _, s := range stmts {
-		if _, err := db.Exec(s); err != nil {
-			return err
-		}
-	}
-	// Development builds prior to the URL cache stored raw favicon image bytes.
-	// Those are intentionally disposable and no longer needed.
-	if _, err := db.Exec("DROP TABLE IF EXISTS favicon_cache"); err != nil {
-		return err
-	}
-	// Earlier development builds included a role column. Remove it so every
-	// account has the same capabilities, including in an existing local DB.
-	columns, err := db.Query("PRAGMA table_info(users)")
-	if err != nil {
-		return err
-	}
-	hasLegacyRole := false
-	for columns.Next() {
-		var cid int
-		var name, columnType string
-		var notNull, primaryKey int
-		var defaultValue sql.NullString
-		if err := columns.Scan(&cid, &name, &columnType, &notNull, &defaultValue, &primaryKey); err != nil {
-			return err
-		}
-		if name == "role" {
-			hasLegacyRole = true
-			break
-		}
-	}
-	if err := columns.Close(); err != nil {
-		return err
-	}
-	if hasLegacyRole {
-		if _, err := db.Exec("ALTER TABLE users DROP COLUMN role"); err != nil {
-			return err
-		}
-	}
-	return nil
+	return schema.Ensure(db)
 }
 func hashPassword(v string) (string, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(v), bcrypt.DefaultCost)

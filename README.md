@@ -7,7 +7,6 @@ A fresh Go rebuild of the FlightDeck browser launcher. The server embeds and ser
 The Docker path keeps the database in the named `flightdeck-data` volume:
 
 ```sh
-cd new
 JWT_SECRET="use-a-long-random-value" docker compose up --build
 ```
 
@@ -16,11 +15,10 @@ Open http://localhost:8082 when using Docker. A directly run Go service listens 
 For a non-container development run, use:
 
 ```sh
-cd new
 JWT_SECRET="use-a-long-random-value" go run ./cmd/flightdeck
 ```
 
-This creates `new/flightdeck.db`.
+This creates `flightdeck.db`.
 
 ## Authentication
 
@@ -30,6 +28,37 @@ This creates `new/flightdeck.db`.
 - Set `COOKIE_SECURE=true` behind HTTPS in production.
 
 FlightDeck caches page URLs and their discovered favicon URLs in the local database. It does not store image bytes; the browser handles normal favicon image caching.
+
+## Import the old database
+
+The one-time importer copies old MySQL users, tab groups, tabs, and environments into a fresh FlightDeck database. It preserves each old user's bcrypt password hash and username, so they can sign in using their existing username and password. It intentionally does not copy old refresh-token sessions.
+
+First run a read-only validation. Supply a normal MySQL DSN (for example `user:password@tcp(host:3306)/flightdeck`) either directly or through `OLD_DATABASE_URL`:
+
+```sh
+go run ./cmd/migrate -source "$OLD_DATABASE_URL" -target "file:flightdeck.db" -dry-run
+```
+
+Then import into a fresh, empty target database:
+
+```sh
+go run ./cmd/migrate -source "$OLD_DATABASE_URL" -target "file:flightdeck.db"
+```
+
+The import refuses to merge into a non-empty database. Back up the old MySQL database and the target volume first.
+
+The production image also contains the importer. Once it is built, run it against the stopped CCM volume (replace `<flightdeck-volume>` with the exact result from `docker volume ls`):
+
+```sh
+docker run --rm \
+  -v <flightdeck-volume>:/data \
+  --entrypoint migrate \
+  ghcr.io/<owner>/flightdeck:<sha> \
+  -source "$OLD_DATABASE_URL" \
+  -target "file:/data/flightdeck.db"
+```
+
+Then start or redeploy FlightDeck normally. If the old MySQL server is reachable only through the Docker host's loopback address, add `--network host` on Linux.
 
 
 ## CCM deployment
