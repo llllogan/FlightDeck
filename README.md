@@ -11,7 +11,7 @@ cd new
 JWT_SECRET="use-a-long-random-value" docker compose up --build
 ```
 
-Open http://localhost:8080 when using Docker, or http://localhost:8082 when running the Go service directly. Create an account. Stop Docker with `docker compose down`; the database persists. To remove everything deliberately, run `docker compose down -v`.
+Open http://localhost:8082. This is the port for both Docker and a directly run Go service. Create an account. Stop Docker with `docker compose down`; the database persists. To remove everything deliberately, run `docker compose down -v`.
 
 For a non-container development run, use:
 
