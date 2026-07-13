@@ -108,7 +108,7 @@ func main() {
 	mux.HandleFunc("POST /api/tabs/{id}/move", a.requireAuth(a.moveTab))
 	static, _ := fs.Sub(webFiles, "web")
 	mux.Handle("/", http.FileServer(http.FS(static)))
-	addr := env("ADDR", ":8080")
+	addr := env("ADDR", ":8082")
 	log.Printf("FlightDeck listening on %s", addr)
 	log.Fatal(http.ListenAndServe(addr, securityHeaders(mux)))
 }
