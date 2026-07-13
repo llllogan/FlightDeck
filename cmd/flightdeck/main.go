@@ -622,7 +622,27 @@ func hashPassword(v string) (string, error) {
 	return string(hash), err
 }
 func checkPassword(hash, password string) bool {
-	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) == nil
+	if bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) == nil {
+		return true
+	}
+	// The old Node service trimmed passwords and removed ASCII control
+	// characters before hashing/comparing. Try that legacy normalization only
+	// as a fallback, so passwords created by this Go service remain exact.
+	legacy := legacyPassword(password)
+	return legacy != password && bcrypt.CompareHashAndPassword([]byte(hash), []byte(legacy)) == nil
+}
+func legacyPassword(v string) string {
+	v = strings.Map(func(r rune) rune {
+		if r <= 8 || r == 11 || r == 12 || (r >= 14 && r <= 31) || r == 127 {
+			return -1
+		}
+		return r
+	}, v)
+	v = strings.TrimSpace(v)
+	if len(v) > 128 {
+		return v[:128]
+	}
+	return v
 }
 func randomToken() string {
 	b := make([]byte, 32)

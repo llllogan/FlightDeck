@@ -112,3 +112,13 @@ func TestLoginAcceptsMigratedUsername(t *testing.T) {
 		t.Fatalf("cookies = %d, want access and refresh cookies", len(response.Result().Cookies()))
 	}
 }
+
+func TestCheckPasswordAcceptsOldPasswordNormalization(t *testing.T) {
+	hash, err := hashPassword("old-password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !checkPassword(hash, " old-password\x01 ") {
+		t.Fatal("expected legacy-normalized password to match")
+	}
+}
